@@ -1,25 +1,63 @@
-import * as exec from '@actions/exec'
 import * as core from '@actions/core'
+import * as cache from '@actions/cache'
+import * as tc from '@actions/tool-cache'
 
+async function installOneGet(version: string, platform: string): Promise<void> {
+  const key = `oneget----${platform}----${version}`
+
+  const gstsrc = '/tmp/oneget'
+  const cacheKey = await cache.restoreCache([gstsrc], key)
+
+  if (!cacheKey) {
+    core.info(`oneget cache not found; creating a new one. (key: "${key}")`)
+
+    let extension
+    if (platform === 'Windows') {
+      extension = 'zip'
+    } else {
+      extension = 'tar.gz'
+    }
+
+    const onegetPath = await tc.downloadTool(
+      `https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension}`,
+      `oneget.${extension}`
+    )
+
+    let oneGetFolder
+    if (platform === 'Windows') {
+      oneGetFolder = await tc.extractZip(onegetPath, gstsrc)
+    } else {
+      oneGetFolder = await tc.extractTar(onegetPath, gstsrc)
+    }
+
+    // await exec.exec(
+    //   `curl -L https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension} --output oneget.${extension}`
+    // )
+    await cache.saveCache([gstsrc], key)
+    core.addPath(oneGetFolder)
+
+    core.info(`New cache created for this key: "${key}"`)
+  } else {
+    core.info(`Found oneget cache; using it. (key: "${key}")`)
+  }
+}
 async function run(): Promise<void> {
   const platformType = process.platform
+  const onegetVersion = 'v0.6.0'
+
   try {
-    let extension = ''
     let platform = ''
 
     switch (platformType) {
       case 'win32': {
-        extension = 'zip'
         platform = 'Windows'
         break
       }
       case 'darwin': {
-        extension = 'tar.gz'
         platform = 'Darwin'
         break
       }
       case 'linux': {
-        extension = 'tar.gz'
         platform = 'Linux'
         break
       }
@@ -28,9 +66,7 @@ async function run(): Promise<void> {
       }
     }
 
-    await exec.exec(
-      `curl -L https://github.com/v8platform/oneget/releases/download/v0.6.0/oneget_${platform}_x86_64.${extension} --output oneget.${extension}`
-    )
+    await installOneGet(onegetVersion, platform)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
