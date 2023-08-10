@@ -1,6 +1,5 @@
 import * as exec from '@actions/exec'
 import * as core from '@actions/core'
-import {wait} from './wait'
 
 async function run(): Promise<void> {
   const platformType = process.platform
