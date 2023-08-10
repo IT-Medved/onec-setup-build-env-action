@@ -22,6 +22,7 @@ async function installOneGet(version: string, platform: string): Promise<void> {
       `https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension}`,
       `oneget.${extension}`
     )
+    core.info(`oneget was downloaded`)
 
     let oneGetFolder
     if (platform === 'Windows') {
@@ -29,10 +30,11 @@ async function installOneGet(version: string, platform: string): Promise<void> {
     } else {
       oneGetFolder = await tc.extractTar(onegetPath, gstsrc)
     }
-
+    core.info(`oneget was extracted`)
     // await exec.exec(
     //   `curl -L https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension} --output oneget.${extension}`
     // )
+    
     await cache.saveCache([gstsrc], key)
     core.addPath(oneGetFolder)
 
