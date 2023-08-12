@@ -3,6 +3,7 @@ import * as process from 'process'
 import * as cp from 'child_process'
 import * as path from 'path'
 import {expect, test} from '@jest/globals'
+import {run} from '../src/main'
 
 test('throws invalid number', async () => {
   const input = parseInt('foo', 10)
@@ -27,3 +28,7 @@ test('test runs', () => {
   }
   //console.log(cp.execFileSync(np, [ip], options).toString())
 })
+
+test('test install all components', async () => {
+  await run()
+}, 300000)

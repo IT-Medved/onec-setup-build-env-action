@@ -39,11 +39,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const cache = __importStar(__nccwpck_require__(7799));
 const tc = __importStar(__nccwpck_require__(7784));
 const exec_1 = __nccwpck_require__(1514);
 const glob = __importStar(__nccwpck_require__(8090));
+const io = __importStar(__nccwpck_require__(7436));
 function installOneGet(version, platform) {
     return __awaiter(this, void 0, void 0, function* () {
         const key = `oneget----${platform}----${version}`;
@@ -58,7 +60,9 @@ function installOneGet(version, platform) {
             else {
                 extension = 'tar.gz';
             }
-            const onegetPath = yield tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension}`, `oneget.${extension}`);
+            const archivePath = `/tmp/oneget.${extension}`;
+            yield io.rmRF(archivePath);
+            const onegetPath = yield tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension}`, `${archivePath}`);
             core.info(`oneget was downloaded`);
             let oneGetFolder;
             if (platform === 'Windows') {
@@ -113,7 +117,10 @@ function installEDT(version, platform) {
                 core.info(`${files}`);
                 core.info('wierd size of edt installers');
             }
-            yield (0, exec_1.exec)(files[0], ['--ignore-signature-warnings', '--ignore-hardware-checks', 'install']);
+            yield (0, exec_1.exec)(files[0], [
+                '--ignore-hardware-checks',
+                'install'
+            ]);
             yield cache.saveCache([gstsrc], key);
             core.info(`New cache created for this key: "${key}"`);
         }
@@ -157,6 +164,7 @@ function run() {
         }
     });
 }
+exports.run = run;
 run();
 
 

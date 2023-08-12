@@ -3,11 +3,12 @@ import * as cache from '@actions/cache'
 import * as tc from '@actions/tool-cache'
 import {exec} from '@actions/exec'
 import * as glob from '@actions/glob'
-
+import * as io from '@actions/io'
 async function installOneGet(version: string, platform: string): Promise<void> {
   const key = `oneget----${platform}----${version}`
 
   const gstsrc = '/tmp/oneget'
+
   const cacheKey = await cache.restoreCache([gstsrc], key)
 
   if (!cacheKey) {
@@ -20,9 +21,12 @@ async function installOneGet(version: string, platform: string): Promise<void> {
       extension = 'tar.gz'
     }
 
+    const archivePath = `/tmp/oneget.${extension}`
+    await io.rmRF(archivePath)
+
     const onegetPath = await tc.downloadTool(
       `https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension}`,
-      `oneget.${extension}`
+      `${archivePath}`
     )
     core.info(`oneget was downloaded`)
 
@@ -83,11 +87,7 @@ async function installEDT(version: string, platform: string): Promise<void> {
       core.info('wierd size of edt installers')
     }
 
-    await exec(files[0], [
-      '--ignore-signature-warnings',
-      '--ignore-hardware-checks',
-      'install'
-    ])
+    await exec(files[0], ['--ignore-hardware-checks', 'install'])
 
     await cache.saveCache([gstsrc], key)
 
@@ -100,7 +100,7 @@ async function installEDT(version: string, platform: string): Promise<void> {
   //await exec('chmod', ['+x', `${gstsrc}/oneget`])
 }
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   const platformType = process.platform
   const onegetVersion = 'v0.6.0'
   const edtVersion = '2022.2.5'
