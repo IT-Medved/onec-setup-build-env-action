@@ -81,7 +81,7 @@ async function installEDT(version: string, platform: string): Promise<void> {
     const patterns = [`**/${installerPattern}`]
     const globber = await glob.create(patterns.join('\n'))
     const files = await globber.glob()
-    
+
     core.info(`finded ${files}`)
 
     // if (files.length !== 1) {

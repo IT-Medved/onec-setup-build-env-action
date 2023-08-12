@@ -90,7 +90,7 @@ function installEDT(version, platform) {
         const installerPattern = '1ce-installer-cli';
         const cacheKey = yield cache.restoreCache([gstsrc], key);
         if (!cacheKey) {
-            core.info(`oneget cache not found; creating a new one. (key: "${key}")`);
+            core.info(`edt cache not found; creating a new one. (key: "${key}")`);
             let onegetPlatform = '';
             if (platform === 'Windows') {
                 onegetPlatform = 'win';
@@ -113,6 +113,7 @@ function installEDT(version, platform) {
             const patterns = [`**/${installerPattern}`];
             const globber = yield glob.create(patterns.join('\n'));
             const files = yield globber.glob();
+            core.info(`finded ${files}`);
             // if (files.length !== 1) {
             //   core.info(`${files}`)
             //   core.info('wierd size of edt installers')
