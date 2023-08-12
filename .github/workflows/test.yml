@@ -5,6 +5,7 @@ on: # rebuild any PRs and main branch changes
     branches:
       - main
       - 'releases/*'
+      - develop
 
 jobs:
   build: # make sure build/ci work properly
@@ -22,3 +23,6 @@ jobs:
       - uses: ./
         with:
           milliseconds: 1000
+        env: 
+          ONEC_USERNAME: ${{ secrets.ONEC_USERNAME }}
+          ONEC_PASSWORD: ${{ secrets.ONEC_PASSWORD }}

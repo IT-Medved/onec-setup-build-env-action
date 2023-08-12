@@ -42,6 +42,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const cache = __importStar(__nccwpck_require__(7799));
 const tc = __importStar(__nccwpck_require__(7784));
+const exec_1 = __nccwpck_require__(1514);
 function installOneGet(version, platform) {
     return __awaiter(this, void 0, void 0, function* () {
         const key = `oneget----${platform}----${version}`;
@@ -57,6 +58,7 @@ function installOneGet(version, platform) {
                 extension = 'tar.gz';
             }
             const onegetPath = yield tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension}`, `oneget.${extension}`);
+            core.info(`oneget was downloaded`);
             let oneGetFolder;
             if (platform === 'Windows') {
                 oneGetFolder = yield tc.extractZip(onegetPath, gstsrc);
@@ -64,16 +66,15 @@ function installOneGet(version, platform) {
             else {
                 oneGetFolder = yield tc.extractTar(onegetPath, gstsrc);
             }
-            // await exec.exec(
-            //   `curl -L https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension} --output oneget.${extension}`
-            // )
+            core.info(`oneget was extracted ${oneGetFolder} -> ${gstsrc}`);
             yield cache.saveCache([gstsrc], key);
-            core.addPath(oneGetFolder);
             core.info(`New cache created for this key: "${key}"`);
         }
         else {
             core.info(`Found oneget cache; using it. (key: "${key}")`);
         }
+        core.addPath(gstsrc);
+        yield (0, exec_1.exec)('chmod', ['+x', `${gstsrc}/oneget`]);
     });
 }
 function run() {
@@ -105,6 +106,7 @@ function run() {
             if (error instanceof Error)
                 core.setFailed(error.message);
         }
+        yield (0, exec_1.exec)('oneget');
     });
 }
 run();
