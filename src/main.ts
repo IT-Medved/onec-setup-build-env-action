@@ -57,7 +57,7 @@ async function installEDT(version: string, platform: string): Promise<void> {
   const cacheKey = await cache.restoreCache([gstsrc], key)
 
   if (!cacheKey) {
-    core.info(`oneget cache not found; creating a new one. (key: "${key}")`)
+    core.info(`edt cache not found; creating a new one. (key: "${key}")`)
 
     let onegetPlatform = ''
     if (platform === 'Windows') {
@@ -81,6 +81,8 @@ async function installEDT(version: string, platform: string): Promise<void> {
     const patterns = [`**/${installerPattern}`]
     const globber = await glob.create(patterns.join('\n'))
     const files = await globber.glob()
+    
+    core.info(`finded ${files}`)
 
     // if (files.length !== 1) {
     //   core.info(`${files}`)
