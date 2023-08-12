@@ -2,6 +2,7 @@ import * as core from '@actions/core'
 import * as cache from '@actions/cache'
 import * as tc from '@actions/tool-cache'
 import {exec} from '@actions/exec'
+import * as glob from '@actions/glob'
 
 async function installOneGet(version: string, platform: string): Promise<void> {
   const key = `oneget----${platform}----${version}`
@@ -44,18 +45,16 @@ async function installOneGet(version: string, platform: string): Promise<void> {
   await exec('chmod', ['+x', `${gstsrc}/oneget`])
 }
 
-
 async function installEDT(version: string, platform: string): Promise<void> {
   const key = `edt----${platform}----${version}`
-  const gstsrc = '/edt'
+  const gstsrc = '/opt/1C'
+  //const onegetDowloads = 'downloads'
+  const installerPattern = '1ce-installer-cli'
   const cacheKey = await cache.restoreCache([gstsrc], key)
 
   if (!cacheKey) {
     core.info(`oneget cache not found; creating a new one. (key: "${key}")`)
 
-    if (platform === 'Windows') {
-    } else {
-    }
     let onegetPlatform = ''
     if (platform === 'Windows') {
       onegetPlatform = 'win'
@@ -63,17 +62,32 @@ async function installEDT(version: string, platform: string): Promise<void> {
       onegetPlatform = 'linux'
     }
 
-    await exec('oneget',['get',`edt:${onegetPlatform}@${version}`])
-    
+    try {
+      await exec('oneget', [
+        'get',
+        '--extract',
+        `edt:${onegetPlatform}@${version}`
+      ])
+    } catch (error) {
+      if (error instanceof Error) core.info(error.message)
+    }
+
     core.info(`edt was downloaded`)
 
-    let oneGetFolder
-    if (platform === 'Windows') {
-      oneGetFolder = await tc.extractZip(onegetPath, gstsrc)
-    } else {
-      oneGetFolder = await tc.extractTar(onegetPath, gstsrc)
+    const patterns = [`**/${installerPattern}`]
+    const globber = await glob.create(patterns.join('\n'))
+    const files = await globber.glob()
+
+    if (files.length !== 1) {
+      core.info(`${files}`)
+      core.info('wierd size of edt installers')
     }
-    core.info(`oneget was extracted ${oneGetFolder} -> ${gstsrc}`)
+
+    await exec(files[0], [
+      '--ignore-signature-warnings',
+      '--ignore-hardware-checks',
+      'install'
+    ])
 
     await cache.saveCache([gstsrc], key)
 
@@ -82,15 +96,14 @@ async function installEDT(version: string, platform: string): Promise<void> {
     core.info(`Found oneget cache; using it. (key: "${key}")`)
   }
 
-  core.addPath(gstsrc)
-  await exec('chmod', ['+x', `${gstsrc}/oneget`])
-
+  //core.addPath(gstsrc)
+  //await exec('chmod', ['+x', `${gstsrc}/oneget`])
 }
 
 async function run(): Promise<void> {
   const platformType = process.platform
   const onegetVersion = 'v0.6.0'
-  const edtVersion = '2023.1.1'
+  const edtVersion = '2022.2.5'
   try {
     let platform = ''
 
@@ -114,12 +127,9 @@ async function run(): Promise<void> {
 
     await installOneGet(onegetVersion, platform)
     await installEDT(edtVersion, platform)
-
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
-
-  await exec('oneget')
 }
 
 run()

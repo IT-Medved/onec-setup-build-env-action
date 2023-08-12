@@ -43,6 +43,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const cache = __importStar(__nccwpck_require__(7799));
 const tc = __importStar(__nccwpck_require__(7784));
 const exec_1 = __nccwpck_require__(1514);
+const glob = __importStar(__nccwpck_require__(8090));
 function installOneGet(version, platform) {
     return __awaiter(this, void 0, void 0, function* () {
         const key = `oneget----${platform}----${version}`;
@@ -77,10 +78,57 @@ function installOneGet(version, platform) {
         yield (0, exec_1.exec)('chmod', ['+x', `${gstsrc}/oneget`]);
     });
 }
+function installEDT(version, platform) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const key = `edt----${platform}----${version}`;
+        const gstsrc = '/opt/1C';
+        //const onegetDowloads = 'downloads'
+        const installerPattern = '1ce-installer-cli';
+        const cacheKey = yield cache.restoreCache([gstsrc], key);
+        if (!cacheKey) {
+            core.info(`oneget cache not found; creating a new one. (key: "${key}")`);
+            let onegetPlatform = '';
+            if (platform === 'Windows') {
+                onegetPlatform = 'win';
+            }
+            else {
+                onegetPlatform = 'linux';
+            }
+            try {
+                yield (0, exec_1.exec)('oneget', [
+                    'get',
+                    '--extract',
+                    `edt:${onegetPlatform}@${version}`
+                ]);
+            }
+            catch (error) {
+                if (error instanceof Error)
+                    core.info(error.message);
+            }
+            core.info(`edt was downloaded`);
+            const patterns = [`**/${installerPattern}`];
+            const globber = yield glob.create(patterns.join('\n'));
+            const files = yield globber.glob();
+            if (files.length !== 1) {
+                core.info(`${files}`);
+                core.info('wierd size of edt installers');
+            }
+            yield (0, exec_1.exec)(files[0], ['--ignore-signature-warnings', '--ignore-hardware-checks', 'install']);
+            yield cache.saveCache([gstsrc], key);
+            core.info(`New cache created for this key: "${key}"`);
+        }
+        else {
+            core.info(`Found oneget cache; using it. (key: "${key}")`);
+        }
+        //core.addPath(gstsrc)
+        //await exec('chmod', ['+x', `${gstsrc}/oneget`])
+    });
+}
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const platformType = process.platform;
         const onegetVersion = 'v0.6.0';
+        const edtVersion = '2022.2.5';
         try {
             let platform = '';
             switch (platformType) {
@@ -101,12 +149,12 @@ function run() {
                 }
             }
             yield installOneGet(onegetVersion, platform);
+            yield installEDT(edtVersion, platform);
         }
         catch (error) {
             if (error instanceof Error)
                 core.setFailed(error.message);
         }
-        yield (0, exec_1.exec)('oneget');
     });
 }
 run();
