@@ -118,7 +118,7 @@ function installEDT(version, platform) {
             //   core.info(`${files}`)
             //   core.info('wierd size of edt installers')
             // }
-            yield (0, exec_1.exec)(files[0], ['--ignore-hardware-checks', 'install']);
+            yield (0, exec_1.exec)(files[0], ['install', '--ignore-hardware-checks']);
             yield cache.saveCache([gstsrc], key);
             core.info(`New cache created for this key: "${key}"`);
         }

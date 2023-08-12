@@ -5,7 +5,6 @@ import * as path from 'path'
 import {expect, test} from '@jest/globals'
 import {run} from '../src/main'
 
-
 test('test install all components', async () => {
   await run()
 }, 300000)

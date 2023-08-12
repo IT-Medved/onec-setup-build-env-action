@@ -12,7 +12,7 @@ async function installOneGet(version: string, platform: string): Promise<void> {
   const cacheKey = await cache.restoreCache([gstsrc], key)
 
   if (!cacheKey) {
-     core.info(`oneget cache not found; creating a new one. (key: "${key}")`)
+    core.info(`oneget cache not found; creating a new one. (key: "${key}")`)
 
     let extension
     if (platform === 'Windows') {
