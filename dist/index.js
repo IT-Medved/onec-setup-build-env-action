@@ -113,14 +113,11 @@ function installEDT(version, platform) {
             const patterns = [`**/${installerPattern}`];
             const globber = yield glob.create(patterns.join('\n'));
             const files = yield globber.glob();
-            if (files.length !== 1) {
-                core.info(`${files}`);
-                core.info('wierd size of edt installers');
-            }
-            yield (0, exec_1.exec)(files[0], [
-                '--ignore-hardware-checks',
-                'install'
-            ]);
+            // if (files.length !== 1) {
+            //   core.info(`${files}`)
+            //   core.info('wierd size of edt installers')
+            // }
+            yield (0, exec_1.exec)(files[0], ['--ignore-hardware-checks', 'install']);
             yield cache.saveCache([gstsrc], key);
             core.info(`New cache created for this key: "${key}"`);
         }

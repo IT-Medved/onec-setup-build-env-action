@@ -82,10 +82,10 @@ async function installEDT(version: string, platform: string): Promise<void> {
     const globber = await glob.create(patterns.join('\n'))
     const files = await globber.glob()
 
-    if (files.length !== 1) {
-      core.info(`${files}`)
-      core.info('wierd size of edt installers')
-    }
+    // if (files.length !== 1) {
+    //   core.info(`${files}`)
+    //   core.info('wierd size of edt installers')
+    // }
 
     await exec(files[0], ['--ignore-hardware-checks', 'install'])
 
