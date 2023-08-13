@@ -89,7 +89,7 @@ async function installEDT(version: string, platform: string): Promise<void> {
     //   core.info('wierd size of edt installers')
     // }
 
-    await exec('sudo', ['files[0]', 'install', '--ignore-hardware-checks'])
+    await exec('sudo', [files[0], 'install', '--ignore-hardware-checks'])
 
     await cache.saveCache([gstsrc], key)
 
