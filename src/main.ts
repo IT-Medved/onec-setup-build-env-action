@@ -37,9 +37,11 @@ async function installOneGet(version: string, platform: string): Promise<void> {
       oneGetFolder = await tc.extractTar(onegetPath, gstsrc)
     }
     core.info(`oneget was extracted ${oneGetFolder} -> ${gstsrc}`)
-
-    await cache.saveCache([gstsrc], key)
-
+    try {
+      await cache.saveCache([gstsrc], key)
+    } catch (error) {
+      if (error instanceof Error) core.info(error.message)
+    }
     core.info(`New cache created for this key: "${key}"`)
   } else {
     core.info(`Found oneget cache; using it. (key: "${key}")`)
@@ -62,6 +64,8 @@ async function installEDT(version: string, platform: string): Promise<void> {
     let onegetPlatform = ''
     if (platform === 'Windows') {
       onegetPlatform = 'win'
+    } else if (platform === 'Darwin') {
+      onegetPlatform = 'mac'
     } else {
       onegetPlatform = 'linux'
     }
@@ -84,11 +88,6 @@ async function installEDT(version: string, platform: string): Promise<void> {
 
     core.info(`finded ${files}`)
 
-    // if (files.length !== 1) {
-    //   core.info(`${files}`)
-    //   core.info('wierd size of edt installers')
-    // }
-
     await exec('sudo', [
       files[0],
       'install',
@@ -96,21 +95,85 @@ async function installEDT(version: string, platform: string): Promise<void> {
       '--ignore-signature-warnings'
     ])
 
-    await cache.saveCache([gstsrc], key)
+    try {
+      await cache.saveCache([gstsrc], key)
+    } catch (error) {
+      if (error instanceof Error) core.info(error.message)
+    }
 
     core.info(`New cache created for this key: "${key}"`)
   } else {
     core.info(`Found oneget cache; using it. (key: "${key}")`)
   }
+}
+async function installPlatform(
+  version: string,
+  platform: string
+): Promise<void> {
+  const key = `enec----${platform}----${version}`
+  const gstsrc = '/opt/1cv8'
+  //const onegetDowloads = 'downloads'
+  const installerPattern = 'setup-full'
+  const cacheKey = await cache.restoreCache([gstsrc], key)
 
-  //core.addPath(gstsrc)
-  //await exec('chmod', ['+x', `${gstsrc}/oneget`])
+  if (!cacheKey) {
+    core.info(`onec cache not found; creating a new one. (key: "${key}")`)
+
+    let onegetPlatform = ''
+    if (platform === 'Windows') {
+      onegetPlatform = 'win'
+    } else if (platform === 'Darwin') {
+      onegetPlatform = 'mac'
+    } else {
+      onegetPlatform = 'linux'
+    }
+
+    try {
+      await exec('oneget', [
+        'get',
+        '--extract',
+        `platform:${onegetPlatform}.x64@${version}`
+      ])
+    } catch (error) {
+      if (error instanceof Error) core.info(error.message)
+    }
+
+    core.info(`onec was downloaded`)
+
+    const patterns = [`**/${installerPattern}*`]
+    const globber = await glob.create(patterns.join('\n'))
+    const files = await globber.glob()
+
+    core.info(`finded ${files}`)
+
+    await exec('sudo', [
+      files[0],
+      '--mode unattended',
+      '--enable-components',
+      'server',
+      '--disable-components',
+      'client',
+      'client-full'
+    ])
+
+    try {
+      await cache.saveCache([gstsrc], key)
+    } catch (error) {
+      if (error instanceof Error) core.info(error.message)
+    }
+
+    core.info(`New cache created for this key: "${key}"`)
+  } else {
+    core.info(`Found oneget cache; using it. (key: "${key}")`)
+  }
 }
 
 export async function run(): Promise<void> {
   const platformType = process.platform
   const onegetVersion = 'v0.6.0'
   const edtVersion = '2022.2.5'
+  const platformVersion = '8.3.21.1890'
+
   try {
     let platform = ''
 
@@ -134,6 +197,7 @@ export async function run(): Promise<void> {
 
     await installOneGet(onegetVersion, platform)
     await installEDT(edtVersion, platform)
+    await installPlatform(platformVersion, platform)
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }

@@ -72,7 +72,13 @@ function installOneGet(version, platform) {
                 oneGetFolder = yield tc.extractTar(onegetPath, gstsrc);
             }
             core.info(`oneget was extracted ${oneGetFolder} -> ${gstsrc}`);
-            yield cache.saveCache([gstsrc], key);
+            try {
+                yield cache.saveCache([gstsrc], key);
+            }
+            catch (error) {
+                if (error instanceof Error)
+                    core.info(error.message);
+            }
             core.info(`New cache created for this key: "${key}"`);
         }
         else {
@@ -95,6 +101,9 @@ function installEDT(version, platform) {
             if (platform === 'Windows') {
                 onegetPlatform = 'win';
             }
+            else if (platform === 'Darwin') {
+                onegetPlatform = 'mac';
+            }
             else {
                 onegetPlatform = 'linux';
             }
@@ -114,19 +123,76 @@ function installEDT(version, platform) {
             const globber = yield glob.create(patterns.join('\n'));
             const files = yield globber.glob();
             core.info(`finded ${files}`);
-            // if (files.length !== 1) {
-            //   core.info(`${files}`)
-            //   core.info('wierd size of edt installers')
-            // }
-            yield (0, exec_1.exec)('sudo', [files[0], 'install', '--ignore-hardware-checks', '--ignore-signature-warnings']);
-            yield cache.saveCache([gstsrc], key);
+            yield (0, exec_1.exec)('sudo', [
+                files[0],
+                'install',
+                '--ignore-hardware-checks',
+                '--ignore-signature-warnings'
+            ]);
+            try {
+                yield cache.saveCache([gstsrc], key);
+            }
+            catch (error) {
+                if (error instanceof Error)
+                    core.info(error.message);
+            }
             core.info(`New cache created for this key: "${key}"`);
         }
         else {
             core.info(`Found oneget cache; using it. (key: "${key}")`);
         }
-        //core.addPath(gstsrc)
-        //await exec('chmod', ['+x', `${gstsrc}/oneget`])
+    });
+}
+function installPlatform(version, platform) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const key = `enec----${platform}----${version}`;
+        const gstsrc = '/opt/1cv8';
+        //const onegetDowloads = 'downloads'
+        const installerPattern = 'setup-full';
+        const cacheKey = yield cache.restoreCache([gstsrc], key);
+        if (!cacheKey) {
+            core.info(`onec cache not found; creating a new one. (key: "${key}")`);
+            let onegetPlatform = '';
+            if (platform === 'Windows') {
+                onegetPlatform = 'win';
+            }
+            else if (platform === 'Darwin') {
+                onegetPlatform = 'mac';
+            }
+            else {
+                onegetPlatform = 'linux';
+            }
+            try {
+                yield (0, exec_1.exec)('oneget', [
+                    'get',
+                    '--extract',
+                    `platform:${onegetPlatform}.x64@${version}`
+                ]);
+            }
+            catch (error) {
+                if (error instanceof Error)
+                    core.info(error.message);
+            }
+            core.info(`onec was downloaded`);
+            const patterns = [`**/${installerPattern}*`];
+            const globber = yield glob.create(patterns.join('\n'));
+            const files = yield globber.glob();
+            core.info(`finded ${files}`);
+            yield (0, exec_1.exec)('sudo', [
+                files[0], '--mode unattended', '--enable-components', 'server', '--disable-components', 'client', 'client-full'
+            ]);
+            try {
+                yield cache.saveCache([gstsrc], key);
+            }
+            catch (error) {
+                if (error instanceof Error)
+                    core.info(error.message);
+            }
+            core.info(`New cache created for this key: "${key}"`);
+        }
+        else {
+            core.info(`Found oneget cache; using it. (key: "${key}")`);
+        }
     });
 }
 function run() {
@@ -134,6 +200,7 @@ function run() {
         const platformType = process.platform;
         const onegetVersion = 'v0.6.0';
         const edtVersion = '2022.2.5';
+        const platformVersion = '8.3.21.1890';
         try {
             let platform = '';
             switch (platformType) {
@@ -155,6 +222,7 @@ function run() {
             }
             yield installOneGet(onegetVersion, platform);
             yield installEDT(edtVersion, platform);
+            yield installPlatform(platformVersion, platform);
         }
         catch (error) {
             if (error instanceof Error)
