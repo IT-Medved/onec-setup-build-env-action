@@ -185,10 +185,7 @@ function installPlatform(version, platform) {
                 '--enable-components',
                 'server',
                 '--disable-components',
-                'client_full',
-                'client_thin',
-                'client_thin_fib',
-                'ws'
+                'client_full,client_thin,client_thin_fib,ws'
             ]);
             try {
                 yield cache.saveCache([gstsrc], key);
