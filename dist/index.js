@@ -185,7 +185,7 @@ function installPlatform(version, platform) {
                 '--enable-components',
                 'server',
                 '--disable-components',
-                'client-full',
+                'client_full',
                 'client_thin',
                 'client_thin_fib',
                 'ws'
