@@ -45,6 +45,9 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
     function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
     function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
@@ -54,6 +57,7 @@ const exec_1 = __nccwpck_require__(1514);
 const glob = __importStar(__nccwpck_require__(8090));
 const io = __importStar(__nccwpck_require__(7436));
 const utils_1 = __nccwpck_require__(918);
+const path_1 = __importDefault(__nccwpck_require__(1017));
 class OnecTool {
     constructor() {
         this.CACHE_KEY_PREFIX = 'setup-onec';
@@ -70,7 +74,7 @@ class OnecTool {
                     _d = false;
                     try {
                         const file = _c;
-                        core.info(file);
+                        core.addPath(path_1.default.dirname(file));
                     }
                     finally {
                         _d = true;
