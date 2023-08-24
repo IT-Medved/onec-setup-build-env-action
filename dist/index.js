@@ -65,28 +65,30 @@ class OnecTool {
     updatePath() {
         var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            const pattern = `${this.cache_[0]}/**/${this.runFileName}`;
-            core.info(pattern);
-            const globber = yield glob.create(pattern);
-            try {
-                for (var _d = true, _e = __asyncValues(globber.globGenerator()), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
-                    _c = _f.value;
-                    _d = false;
-                    try {
-                        const file = _c;
-                        core.addPath(path_1.default.dirname(file));
-                    }
-                    finally {
-                        _d = true;
-                    }
-                }
-            }
-            catch (e_1_1) { e_1 = { error: e_1_1 }; }
-            finally {
+            for (let element of this.runFileName) {
+                const pattern = `${this.cache_[0]}/**/${element}`;
+                core.info(pattern);
+                const globber = yield glob.create(pattern);
                 try {
-                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                    for (var _d = true, _e = (e_1 = void 0, __asyncValues(globber.globGenerator())), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
+                        _c = _f.value;
+                        _d = false;
+                        try {
+                            const file = _c;
+                            core.addPath(path_1.default.dirname(file));
+                        }
+                        finally {
+                            _d = true;
+                        }
+                    }
                 }
-                finally { if (e_1) throw e_1.error; }
+                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                finally {
+                    try {
+                        if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                    }
+                    finally { if (e_1) throw e_1.error; }
+                }
             }
         });
     }
@@ -150,7 +152,7 @@ class OnecPlatform extends OnecTool {
     constructor(version, platform) {
         //super(version, platform)
         super();
-        this.runFileName = 'ibcmd';
+        this.runFileName = ['ibcmd', 'ibcmd.exe'];
         this.CACHE_PRIMARY_KEY = 'onec';
         this.version = version;
         this.platform = platform;
@@ -216,7 +218,7 @@ class OnecPlatform extends OnecTool {
 class OneGet extends OnecTool {
     constructor(version, platform) {
         super();
-        this.runFileName = 'oneget';
+        this.runFileName = ['oneget'];
         this.CACHE_PRIMARY_KEY = 'oneget';
         this.version = version;
         this.platform = platform;
@@ -254,7 +256,7 @@ class OneGet extends OnecTool {
 class EDT extends OnecTool {
     constructor(version, platform) {
         super();
-        this.runFileName = 'ring';
+        this.runFileName = ['ring', 'ring.bat', '1cedtcli.bat', '1cedtcli.sh'];
         this.CACHE_PRIMARY_KEY = 'edt';
         this.version = version;
         this.platform = platform;
