@@ -65,7 +65,7 @@ class OnecTool {
     updatePath() {
         var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            for (let element of this.runFileName) {
+            for (const element of this.runFileName) {
                 const pattern = `${this.cache_[0]}/**/${element}`;
                 core.info(pattern);
                 const globber = yield glob.create(pattern);

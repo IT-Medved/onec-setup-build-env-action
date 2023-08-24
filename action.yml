@@ -2,7 +2,7 @@ name: 'Your name here'
 description: 'Provide a description here'
 author: 'Your name or organization here'
 inputs:
-  type: # change this
+  type:
     required: true
     description: 'type of installer'
     default: ''
