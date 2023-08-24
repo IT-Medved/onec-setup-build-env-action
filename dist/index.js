@@ -60,7 +60,10 @@ class OnecTool {
             const cachePath = this.cache_;
             let matchedKey;
             try {
-                matchedKey = yield cache.restoreCache(cachePath, primaryKey);
+                core.info(`Trying to restore: ${cachePath.slice().toString()}`);
+                matchedKey = yield cache.restoreCache(cachePath.slice(), primaryKey, [
+                    primaryKey
+                ]);
             }
             catch (err) {
                 const message = err.message;
@@ -92,7 +95,8 @@ class OnecTool {
     saveCache() {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                yield cache.saveCache(this.cache_, yield this.computeKey());
+                core.info(`Trying to save: ${this.cache_.slice().toString()}`);
+                yield cache.saveCache(this.cache_.slice(), yield this.computeKey());
             }
             catch (error) {
                 if (error instanceof Error)
@@ -272,7 +276,7 @@ function run() {
         const type = core.getInput('type');
         const edt_version = core.getInput('edt_version');
         const onec_version = core.getInput('onec_version');
-        const useCache = core.getInput('cache') && (0, utils_1.isCacheFeatureAvailable)();
+        const useCache = core.getBooleanInput('cache') && (0, utils_1.isCacheFeatureAvailable)();
         let installer;
         if (type === 'edt') {
             installer = new EDT(edt_version, process.platform);
