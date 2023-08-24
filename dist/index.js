@@ -61,7 +61,9 @@ class OnecTool {
     handleLoadedCache() {
         var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
-            const globber = yield glob.create(`${this.cache_[0]}**/${this.runFileName}`);
+            const pattern = `${this.cache_[0]}/**/${this.runFileName}`;
+            core.info(pattern);
+            const globber = yield glob.create(pattern);
             try {
                 for (var _d = true, _e = __asyncValues(globber.globGenerator()), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
                     _c = _f.value;
