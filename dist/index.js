@@ -75,6 +75,7 @@ class OnecTool {
                         _d = false;
                         try {
                             const file = _c;
+                            core.info(`add to PATH ${path_1.default.dirname(file)} (${file}) `);
                             core.addPath(path_1.default.dirname(file));
                         }
                         finally {
