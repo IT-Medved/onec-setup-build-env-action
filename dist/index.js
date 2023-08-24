@@ -62,7 +62,7 @@ class OnecTool {
     constructor() {
         this.CACHE_KEY_PREFIX = 'setup-onec';
     }
-    handleLoadedCache() {
+    updatePath() {
         var _a, e_1, _b, _c;
         return __awaiter(this, void 0, void 0, function* () {
             const pattern = `${this.cache_[0]}/**/${this.runFileName}`;
@@ -88,6 +88,11 @@ class OnecTool {
                 }
                 finally { if (e_1) throw e_1.error; }
             }
+        });
+    }
+    handleLoadedCache() {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this.updatePath();
         });
     }
     restoreCache() {
@@ -336,6 +341,7 @@ function run() {
             const oneget = new OneGet(onegetVersion, process.platform);
             yield oneget.install();
             yield installer.install();
+            yield installer.updatePath();
             if (useCache) {
                 yield installer.saveCache();
             }
