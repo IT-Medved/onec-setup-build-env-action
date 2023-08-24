@@ -38,6 +38,13 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(2186));
@@ -52,7 +59,30 @@ class OnecTool {
         this.CACHE_KEY_PREFIX = 'setup-onec';
     }
     handleLoadedCache() {
-        return __awaiter(this, void 0, void 0, function* () { });
+        var _a, e_1, _b, _c;
+        return __awaiter(this, void 0, void 0, function* () {
+            const globber = yield glob.create(`${this.cache_[0]}**/${this.runFileName}`);
+            try {
+                for (var _d = true, _e = __asyncValues(globber.globGenerator()), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
+                    _c = _f.value;
+                    _d = false;
+                    try {
+                        const file = _c;
+                        core.info(file);
+                    }
+                    finally {
+                        _d = true;
+                    }
+                }
+            }
+            catch (e_1_1) { e_1 = { error: e_1_1 }; }
+            finally {
+                try {
+                    if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
+                }
+                finally { if (e_1) throw e_1.error; }
+            }
+        });
     }
     restoreCache() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -109,6 +139,7 @@ class OnecPlatform extends OnecTool {
     constructor(version, platform) {
         //super(version, platform)
         super();
+        this.runFileName = 'ibcmd';
         this.CACHE_PRIMARY_KEY = 'onec';
         this.version = version;
         this.platform = platform;
@@ -160,7 +191,7 @@ class OnecPlatform extends OnecTool {
                 return ['C:/Program Files/1cv8'];
             }
             case 'darwin': {
-                return ['/opt/1cv8']; // /Applications/1cv8.localized/8.3.21.1644/ but inly .app
+                return ['/opt/1cv8']; // /Applications/1cv8.localized/8.3.21.1644/ but only .app
             }
             case 'linux': {
                 return ['/opt/1cv8'];
@@ -174,6 +205,7 @@ class OnecPlatform extends OnecTool {
 class OneGet extends OnecTool {
     constructor(version, platform) {
         super();
+        this.runFileName = 'oneget';
         this.CACHE_PRIMARY_KEY = 'oneget';
         this.version = version;
         this.platform = platform;
@@ -211,6 +243,7 @@ class OneGet extends OnecTool {
 class EDT extends OnecTool {
     constructor(version, platform) {
         super();
+        this.runFileName = 'ring';
         this.CACHE_PRIMARY_KEY = 'edt';
         this.version = version;
         this.platform = platform;
