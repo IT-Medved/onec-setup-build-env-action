@@ -46,62 +46,78 @@ const tc = __importStar(__nccwpck_require__(7784));
 const exec_1 = __nccwpck_require__(1514);
 const glob = __importStar(__nccwpck_require__(8090));
 const io = __importStar(__nccwpck_require__(7436));
-function installOneGet(version, platform) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const key = `oneget----${platform}----${version}`;
-        const gstsrc = '/tmp/oneget';
-        const cacheKey = yield cache.restoreCache([gstsrc], key);
-        if (!cacheKey) {
-            core.info(`oneget cache not found; creating a new one. (key: "${key}")`);
-            let extension;
-            if (platform === 'Windows') {
-                extension = 'zip';
-            }
-            else {
-                extension = 'tar.gz';
-            }
-            const archivePath = `/tmp/oneget.${extension}`;
-            yield io.rmRF(archivePath);
-            const onegetPath = yield tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/${version}/oneget_${platform}_x86_64.${extension}`, `${archivePath}`);
-            core.info(`oneget was downloaded`);
-            let oneGetFolder;
-            if (platform === 'Windows') {
-                oneGetFolder = yield tc.extractZip(onegetPath, gstsrc);
-            }
-            else {
-                oneGetFolder = yield tc.extractTar(onegetPath, gstsrc);
-            }
-            core.info(`oneget was extracted ${oneGetFolder} -> ${gstsrc}`);
+const utils_1 = __nccwpck_require__(918);
+class OnecTool {
+    constructor() {
+        this.CACHE_KEY_PREFIX = 'setup-onec';
+    }
+    handleLoadedCache() {
+        return __awaiter(this, void 0, void 0, function* () { });
+    }
+    restoreCache() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const primaryKey = yield this.computeKey();
+            const cachePath = this.cache_;
+            let matchedKey;
             try {
-                yield cache.saveCache([gstsrc], key);
+                matchedKey = yield cache.restoreCache(cachePath, primaryKey);
+            }
+            catch (err) {
+                const message = err.message;
+                core.info(`[warning]${message}`);
+                core.setOutput('cache-hit', false);
+                return;
+            }
+            yield this.handleLoadedCache();
+            yield this.handleMatchResult(matchedKey, primaryKey);
+            return matchedKey;
+        });
+    }
+    computeKey() {
+        return __awaiter(this, void 0, void 0, function* () {
+            return `${this.CACHE_KEY_PREFIX}--${this.CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`;
+        });
+    }
+    handleMatchResult(matchedKey, primaryKey) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (matchedKey) {
+                core.info(`Cache restored from key: ${matchedKey}`);
+            }
+            else {
+                core.info(`${primaryKey} cache is not found`);
+            }
+            core.setOutput('cache-hit', matchedKey === primaryKey);
+        });
+    }
+    saveCache() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                yield cache.saveCache(this.cache_, yield this.computeKey());
             }
             catch (error) {
                 if (error instanceof Error)
                     core.info(error.message);
             }
-            core.info(`New cache created for this key: "${key}"`);
-        }
-        else {
-            core.info(`Found oneget cache; using it. (key: "${key}")`);
-        }
-        core.addPath(gstsrc);
-        yield (0, exec_1.exec)('chmod', ['+x', `${gstsrc}/oneget`]);
-    });
+        });
+    }
 }
-function installEDT(version, platform) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const key = `edt----${platform}----${version}`;
-        const gstsrc = '/opt/1C';
-        //const onegetDowloads = 'downloads'
-        const installerPattern = '1ce-installer-cli';
-        const cacheKey = yield cache.restoreCache([gstsrc], key);
-        if (!cacheKey) {
-            core.info(`edt cache not found; creating a new one. (key: "${key}")`);
+class OnecPlatform extends OnecTool {
+    constructor(version, platform) {
+        //super(version, platform)
+        super();
+        this.CACHE_PRIMARY_KEY = 'onec';
+        this.version = version;
+        this.platform = platform;
+        this.cache_ = this.getCacheDirs();
+    }
+    install() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const installerPattern = 'setup-full';
             let onegetPlatform = '';
-            if (platform === 'Windows') {
+            if (this.platform === 'win32') {
                 onegetPlatform = 'win';
             }
-            else if (platform === 'Darwin') {
+            else if (this.platform === 'darwin') {
                 onegetPlatform = 'mac';
             }
             else {
@@ -111,62 +127,7 @@ function installEDT(version, platform) {
                 yield (0, exec_1.exec)('oneget', [
                     'get',
                     '--extract',
-                    `edt:${onegetPlatform}@${version}`
-                ]);
-            }
-            catch (error) {
-                if (error instanceof Error)
-                    core.info(error.message);
-            }
-            core.info(`edt was downloaded`);
-            const patterns = [`**/${installerPattern}`];
-            const globber = yield glob.create(patterns.join('\n'));
-            const files = yield globber.glob();
-            core.info(`finded ${files}`);
-            yield (0, exec_1.exec)('sudo', [
-                files[0],
-                'install',
-                '--ignore-hardware-checks',
-                '--ignore-signature-warnings'
-            ]);
-            try {
-                yield cache.saveCache([gstsrc], key);
-            }
-            catch (error) {
-                if (error instanceof Error)
-                    core.info(error.message);
-            }
-            core.info(`New cache created for this key: "${key}"`);
-        }
-        else {
-            core.info(`Found oneget cache; using it. (key: "${key}")`);
-        }
-    });
-}
-function installPlatform(version, platform) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const key = `enec----${platform}----${version}`;
-        const gstsrc = '/opt/1cv8';
-        //const onegetDowloads = 'downloads'
-        const installerPattern = 'setup-full';
-        const cacheKey = yield cache.restoreCache([gstsrc], key);
-        if (!cacheKey) {
-            core.info(`onec cache not found; creating a new one. (key: "${key}")`);
-            let onegetPlatform = '';
-            if (platform === 'Windows') {
-                onegetPlatform = 'win';
-            }
-            else if (platform === 'Darwin') {
-                onegetPlatform = 'mac';
-            }
-            else {
-                onegetPlatform = 'linux';
-            }
-            try {
-                yield (0, exec_1.exec)('oneget', [
-                    'get',
-                    '--extract',
-                    `platform:${onegetPlatform}.full.x64@${version}`
+                    `platform:${onegetPlatform}.full.x64@${this.version}`
                 ]);
             }
             catch (error) {
@@ -187,57 +148,217 @@ function installPlatform(version, platform) {
                 '--disable-components',
                 'client_full,client_thin,client_thin_fib,ws'
             ]);
+        });
+    }
+    getCacheDirs() {
+        switch (this.platform) {
+            case 'win32': {
+                return ['C:/Program Files/1cv8'];
+            }
+            case 'darwin': {
+                return ['/opt/1cv8']; // /Applications/1cv8.localized/8.3.21.1644/ but inly .app
+            }
+            case 'linux': {
+                return ['/opt/1cv8'];
+            }
+            default: {
+                throw new Error('Not supported on this OS type');
+            }
+        }
+    }
+}
+class OneGet extends OnecTool {
+    constructor(version, platform) {
+        super();
+        this.CACHE_PRIMARY_KEY = 'oneget';
+        this.version = version;
+        this.platform = platform;
+        this.cache_ = this.getCacheDirs();
+    }
+    install() {
+        return __awaiter(this, void 0, void 0, function* () {
+            let extension;
+            if (this.platform === 'win32') {
+                extension = 'zip';
+            }
+            else {
+                extension = 'tar.gz';
+            }
+            const archivePath = `/tmp/oneget.${extension}`;
+            yield io.rmRF(archivePath);
+            const onegetPath = yield tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/${this.version}/oneget_${this.platform}_x86_64.${extension}`, `${archivePath}`);
+            core.info(`oneget was downloaded`);
+            let oneGetFolder;
+            if (this.platform === 'win32') {
+                oneGetFolder = yield tc.extractZip(onegetPath, this.cache_[0]);
+            }
+            else {
+                oneGetFolder = yield tc.extractTar(onegetPath, this.cache_[0]);
+            }
+            core.info(`oneget was extracted ${oneGetFolder} -> ${this.cache_[0]}`);
+            core.addPath(this.cache_[0]);
+            yield (0, exec_1.exec)('chmod', ['+x', `${this.cache_[0]}/oneget`]);
+        });
+    }
+    getCacheDirs() {
+        return ['/tmp/oneget'];
+    }
+}
+class EDT extends OnecTool {
+    constructor(version, platform) {
+        super();
+        this.CACHE_PRIMARY_KEY = 'edt';
+        this.version = version;
+        this.platform = platform;
+        this.cache_ = this.getCacheDirs();
+    }
+    install() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const installerPattern = '1ce-installer-cli';
+            let onegetPlatform = '';
+            if (this.platform === 'win32') {
+                onegetPlatform = 'win';
+            }
+            else if (this.platform === 'darwin') {
+                onegetPlatform = 'mac';
+            }
+            else {
+                onegetPlatform = 'linux';
+            }
             try {
-                yield cache.saveCache([gstsrc], key);
+                yield (0, exec_1.exec)('oneget', [
+                    'get',
+                    '--extract',
+                    `edt:${onegetPlatform}@${this.version}`
+                ]);
             }
             catch (error) {
                 if (error instanceof Error)
                     core.info(error.message);
             }
-            core.info(`New cache created for this key: "${key}"`);
+            core.info(`edt was downloaded`);
+            const patterns = [`**/${installerPattern}`];
+            const globber = yield glob.create(patterns.join('\n'));
+            const files = yield globber.glob();
+            core.info(`finded ${files}`);
+            yield (0, exec_1.exec)('sudo', [
+                files[0],
+                'install',
+                '--ignore-hardware-checks',
+                '--ignore-signature-warnings'
+            ]);
+        });
+    }
+    getCacheDirs() {
+        switch (this.platform) {
+            case 'win32': {
+                return ['C:/Program Files/1C'];
+            }
+            case 'darwin': {
+                return ['/Applications/1C'];
+            }
+            case 'linux': {
+                return ['/opt/1C'];
+            }
+            default: {
+                throw new Error('Not supported on this OS type');
+            }
         }
-        else {
-            core.info(`Found oneget cache; using it. (key: "${key}")`);
-        }
-    });
+    }
 }
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
-        const platformType = process.platform;
         const onegetVersion = 'v0.6.0';
-        const edtVersion = '2022.2.5';
-        const platformVersion = '8.3.21.1890';
-        try {
-            let platform = '';
-            switch (platformType) {
-                case 'win32': {
-                    platform = 'Windows';
-                    break;
-                }
-                case 'darwin': {
-                    platform = 'Darwin';
-                    break;
-                }
-                case 'linux': {
-                    platform = 'Linux';
-                    break;
-                }
-                default: {
-                    throw new Error('Not supported on this OS type');
-                }
-            }
-            yield installOneGet(onegetVersion, platform);
-            yield installEDT(edtVersion, platform);
-            yield installPlatform(platformVersion, platform);
+        const type = core.getInput('type');
+        const edt_version = core.getInput('edt_version');
+        const onec_version = core.getInput('onec_version');
+        const useCache = core.getInput('cache') && (0, utils_1.isCacheFeatureAvailable)();
+        let installer;
+        if (type === 'edt') {
+            installer = new EDT(edt_version, process.platform);
         }
-        catch (error) {
-            if (error instanceof Error)
-                core.setFailed(error.message);
+        else if (type === 'onec') {
+            installer = new OnecPlatform(onec_version, process.platform);
+        }
+        else {
+            throw new Error('not recognized installer type');
+        }
+        let restoredKey;
+        let restored = false;
+        if (useCache) {
+            restoredKey = yield installer.restoreCache();
+            restored = restoredKey !== undefined;
+        }
+        if (!restored) {
+            const oneget = new OneGet(onegetVersion, process.platform);
+            yield oneget.install();
+            yield installer.install();
+            if (useCache) {
+                yield installer.saveCache();
+            }
         }
     });
 }
 exports.run = run;
 run();
+
+
+/***/ }),
+
+/***/ 918:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.isCacheFeatureAvailable = exports.isGhes = exports.WINDOWS_PLATFORMS = exports.WINDOWS_ARCHS = exports.IS_MAC = exports.IS_LINUX = exports.IS_WINDOWS = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+const cache = __importStar(__nccwpck_require__(7799));
+exports.IS_WINDOWS = process.platform === 'win32';
+exports.IS_LINUX = process.platform === 'linux';
+exports.IS_MAC = process.platform === 'darwin';
+exports.WINDOWS_ARCHS = ['x86', 'x64'];
+exports.WINDOWS_PLATFORMS = ['win32', 'win64'];
+function isGhes() {
+    const ghUrl = new URL(process.env['GITHUB_SERVER_URL'] || 'https://github.com');
+    return ghUrl.hostname.toUpperCase() !== 'GITHUB.COM';
+}
+exports.isGhes = isGhes;
+function isCacheFeatureAvailable() {
+    if (cache.isFeatureAvailable()) {
+        return true;
+    }
+    if (isGhes()) {
+        core.warning('Caching is only supported on GHES version >= 3.5. If you are on a version >= 3.5, please check with your GHES admin if the Actions cache service is enabled or not.');
+        return false;
+    }
+    core.warning('The runner was not able to contact the cache service. Caching will be skipped');
+    return false;
+}
+exports.isCacheFeatureAvailable = isCacheFeatureAvailable;
 
 
 /***/ }),
