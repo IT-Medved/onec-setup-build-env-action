@@ -176,6 +176,8 @@ class OnecPlatform extends OnecTool {
                 yield (0, exec_1.exec)('oneget', [
                     'get',
                     '--extract',
+                    '--filter',
+                    'platform=server64_8',
                     `platform:${onegetPlatform}.full.x64@${this.version}`
                 ]);
             }
@@ -193,9 +195,9 @@ class OnecPlatform extends OnecTool {
                 '--mode',
                 'unattended',
                 '--enable-components',
-                'server',
+                'server,client_full',
                 '--disable-components',
-                'client_full,client_thin,client_thin_fib,ws'
+                'client_thin,client_thin_fib,ws'
             ]);
         });
     }
