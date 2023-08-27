@@ -100,30 +100,15 @@ class OnecTool {
     }
     restoreCache() {
         return __awaiter(this, void 0, void 0, function* () {
-            const primaryKey = yield this.computeKey();
-            const cachePath = this.cache_;
-            let matchedKey;
-            try {
-                core.info(`Trying to restore: ${cachePath.slice().toString()}`);
-                matchedKey = yield cache.restoreCache(cachePath.slice(), primaryKey, [
-                    primaryKey
-                ]);
-            }
-            catch (err) {
-                const message = err.message;
-                core.info(`[warning]${message}`);
-                core.setOutput('cache-hit', false);
-                return;
-            }
+            const primaryKey = this.computeKey();
+            const matchedKey = yield (0, utils_1.restoreCasheByPrimaryKey)(this.cache_, primaryKey);
             yield this.handleLoadedCache();
             yield this.handleMatchResult(matchedKey, primaryKey);
             return matchedKey;
         });
     }
     computeKey() {
-        return __awaiter(this, void 0, void 0, function* () {
-            return `${this.CACHE_KEY_PREFIX}--${this.CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`;
-        });
+        return `${this.CACHE_KEY_PREFIX}--${this.CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`;
     }
     handleMatchResult(matchedKey, primaryKey) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -140,7 +125,7 @@ class OnecTool {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 core.info(`Trying to save: ${this.cache_.slice().toString()}`);
-                yield cache.saveCache(this.cache_.slice(), yield this.computeKey());
+                yield cache.saveCache(this.cache_.slice(), this.computeKey());
             }
             catch (error) {
                 if (error instanceof Error)
@@ -151,7 +136,6 @@ class OnecTool {
 }
 class OnecPlatform extends OnecTool {
     constructor(version, platform) {
-        //super(version, platform)
         super();
         this.runFileName = ['ibcmd', 'ibcmd.exe'];
         this.CACHE_PRIMARY_KEY = 'onec';
@@ -238,7 +222,7 @@ class OneGet extends OnecTool {
             }
             const archivePath = `/tmp/oneget.${extension}`;
             yield io.rmRF(archivePath);
-            const onegetPath = yield tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/${this.version}/oneget_${this.platform}_x86_64.${extension}`, `${archivePath}`);
+            const onegetPath = yield tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${this.platform}_x86_64.${extension}`, `${archivePath}`);
             core.info(`oneget was downloaded`);
             let oneGetFolder;
             if (this.platform === 'win32') {
@@ -326,7 +310,11 @@ function run() {
         const edt_version = core.getInput('edt_version');
         const onec_version = core.getInput('onec_version');
         const useCache = core.getBooleanInput('cache') && (0, utils_1.isCacheFeatureAvailable)();
+        const useCacheDistr = core.getBooleanInput('cache_distr') && (0, utils_1.isCacheFeatureAvailable)();
         let installer;
+        if (useCache && useCacheDistr) {
+            throw new Error('only one cache type allowed');
+        }
         if (type === 'edt') {
             installer = new EDT(edt_version, process.platform);
         }
@@ -334,7 +322,7 @@ function run() {
             installer = new OnecPlatform(onec_version, process.platform);
         }
         else {
-            throw new Error('not recognized installer type');
+            throw new Error('failed to recognize the installer type');
         }
         let restoredKey;
         let restored = false;
@@ -387,8 +375,17 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.isCacheFeatureAvailable = exports.isGhes = exports.WINDOWS_PLATFORMS = exports.WINDOWS_ARCHS = exports.IS_MAC = exports.IS_LINUX = exports.IS_WINDOWS = void 0;
+exports.restoreCasheByPrimaryKey = exports.isCacheFeatureAvailable = exports.isGhes = exports.WINDOWS_PLATFORMS = exports.WINDOWS_ARCHS = exports.IS_MAC = exports.IS_LINUX = exports.IS_WINDOWS = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const cache = __importStar(__nccwpck_require__(7799));
 exports.IS_WINDOWS = process.platform === 'win32';
@@ -413,6 +410,23 @@ function isCacheFeatureAvailable() {
     return false;
 }
 exports.isCacheFeatureAvailable = isCacheFeatureAvailable;
+function restoreCasheByPrimaryKey(paths, key) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let matchedKey;
+        try {
+            core.info(`Trying to restore: ${paths.slice().toString()}`);
+            matchedKey = yield cache.restoreCache(paths.slice(), key, [key]);
+        }
+        catch (err) {
+            const message = err.message;
+            core.info(`[warning]${message}`);
+            core.setOutput('cache-hit', false);
+            return;
+        }
+        return matchedKey;
+    });
+}
+exports.restoreCasheByPrimaryKey = restoreCasheByPrimaryKey;
 
 
 /***/ }),
