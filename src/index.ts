@@ -1,10 +1,10 @@
 import * as core from '@actions/core'
 import * as cache from '@actions/cache'
 import * as tc from '@actions/tool-cache'
-import {exec} from '@actions/exec'
+import { exec } from '@actions/exec'
 import * as glob from '@actions/glob'
 import * as io from '@actions/io'
-import {isCacheFeatureAvailable, restoreCasheByPrimaryKey} from './utils'
+import { isCacheFeatureAvailable, restoreCasheByPrimaryKey } from './utils'
 import path from 'path'
 
 interface IOnecTools {
@@ -310,4 +310,5 @@ export async function run(): Promise<void> {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-floating-promises
 run()
