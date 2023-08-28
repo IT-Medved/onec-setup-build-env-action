@@ -267,10 +267,11 @@ class EDT extends OnecTool {
   }
 }
 export async function run(): Promise<void> {
-  const onegetVersion = 'v0.6.0'
   const type = core.getInput('type')
   const edt_version = core.getInput('edt_version')
   const onec_version = core.getInput('onec_version')
+  const onegetVersion = core.getInput('oneget_version')
+
   const useCache = core.getBooleanInput('cache') && isCacheFeatureAvailable()
   const useCacheDistr =
     core.getBooleanInput('cache_distr') && isCacheFeatureAvailable()
