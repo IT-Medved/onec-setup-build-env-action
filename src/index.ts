@@ -121,15 +121,6 @@ class OnecPlatform extends OnecTool {
     } catch (error) {
       if (error instanceof Error) core.info(error.message)
     }
-
-    if (this.platform === 'win32') {
-      const pattern = `**/*_x86_64.zip`
-      core.info(pattern)
-      const globber = await glob.create(pattern)
-      for await (const file of globber.globGenerator()) {
-        tc.extractZip(file)
-      }
-    }
     core.info(`onec was downloaded`)
 
     const patterns = [`**/${installerPattern}*`]
@@ -258,7 +249,14 @@ class EDT extends OnecTool {
       if (error instanceof Error) core.info(error.message)
     }
     core.info(`edt was downloaded`)
-
+    if (this.platform === 'win32') {
+      const pattern = `**/*_x86_64.zip`
+      core.info(pattern)
+      const globber = await glob.create(pattern)
+      for await (const file of globber.globGenerator()) {
+        tc.extractZip(file)
+      }
+    }
     const patterns = [`**/${installerPattern}`]
     const globber = await glob.create(patterns.join('\n'))
     const files = await globber.glob()
