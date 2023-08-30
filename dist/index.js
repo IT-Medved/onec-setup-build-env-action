@@ -60977,7 +60977,9 @@ class OneGet extends OnecTool {
         }
         core.info(`oneget was extracted ${oneGetFolder} -> ${this.cache_[0]}`);
         core.addPath(this.cache_[0]);
-        await (0, exec_1.exec)('chmod', ['+x', `${this.cache_[0]}/oneget`]);
+        if (this.platform !== 'win32') {
+            await (0, exec_1.exec)('chmod', ['+x', `${this.cache_[0]}/oneget`]);
+        }
     }
     getCacheDirs() {
         return ['/tmp/oneget'];
