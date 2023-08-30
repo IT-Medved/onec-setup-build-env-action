@@ -61041,12 +61041,21 @@ class EDT extends OnecTool {
         const globber = await glob.create(patterns.join('\n'));
         const files = await globber.glob();
         core.info(`finded ${files}`);
-        await (0, exec_1.exec)('sudo', [
-            files[0],
-            'install',
-            '--ignore-hardware-checks',
-            '--ignore-signature-warnings'
-        ]);
+        if (this.platform === 'win32') {
+            await (0, exec_1.exec)(files[0], [
+                'install',
+                '--ignore-hardware-checks',
+                '--ignore-signature-warnings'
+            ]);
+        }
+        else {
+            await (0, exec_1.exec)('sudo', [
+                files[0],
+                'install',
+                '--ignore-hardware-checks',
+                '--ignore-signature-warnings'
+            ]);
+        }
     }
     getCacheDirs() {
         switch (this.platform) {

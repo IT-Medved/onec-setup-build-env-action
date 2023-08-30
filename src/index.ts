@@ -267,15 +267,21 @@ class EDT extends OnecTool {
     const files = await globber.glob()
 
     core.info(`finded ${files}`)
-
-    await exec('sudo', [
-      files[0],
-      'install',
-      '--ignore-hardware-checks',
-      '--ignore-signature-warnings'
-    ])
+    if (this.platform === 'win32') {
+      await exec(files[0], [
+        'install',
+        '--ignore-hardware-checks',
+        '--ignore-signature-warnings'
+      ])
+    } else {
+      await exec('sudo', [
+        files[0],
+        'install',
+        '--ignore-hardware-checks',
+        '--ignore-signature-warnings'
+      ])
+    }
   }
-
   getCacheDirs(): string[] {
     switch (this.platform) {
       case 'win32': {
