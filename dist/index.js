@@ -61024,7 +61024,7 @@ class EDT extends OnecTool {
         }
         core.info(`edt was downloaded`);
         if (this.platform === 'win32') {
-            const pattern = `**/*_x86_64.zip`;
+            const pattern = `**/1c_edt_distr_offline*.zip`;
             core.info(pattern);
             const globber = await glob.create(pattern);
             for await (const file of globber.globGenerator()) {
