@@ -7,6 +7,10 @@ import * as io from '@actions/io'
 import { isCacheFeatureAvailable, restoreCasheByPrimaryKey } from './utils'
 import path from 'path'
 
+const PLATFORM_WIN = 'win32'
+const PLATFORM_LIN = 'linux'
+const PLATFORM_MAC = 'darwin'
+
 interface IOnecTools {
   CACHE_KEY_PREFIX: string
   CACHE_PRIMARY_KEY: string
@@ -80,6 +84,37 @@ abstract class OnecTool implements IOnecTools {
       if (error instanceof Error) core.info(error.message)
     }
   }
+
+  protected isWindows(): boolean {
+    return PLATFORM_WIN === this.platform;
+  }
+
+  protected isMac(): boolean {
+    return PLATFORM_MAC === this.platform;
+  }
+
+  protected isLinux(): boolean {
+    return PLATFORM_LIN === this.platform;
+  }
+
+  protected getOnegetPlatform(): String {
+
+    switch (this.platform) {
+      case PLATFORM_WIN: {
+        return 'win';
+      }
+      case PLATFORM_MAC: {
+        return 'mac';
+      }
+      case PLATFORM_LIN: {
+        return 'linux';
+      }
+      default: {
+        core.setFailed("Unrecognized os " + this.platform)
+        return ''
+      }
+    }
+  }
 }
 
 class OnecPlatform extends OnecTool {
@@ -100,15 +135,7 @@ class OnecPlatform extends OnecTool {
 
   async install(): Promise<void> {
     const installerPattern = 'setup-full'
-
-    let onegetPlatform = ''
-    if (this.platform === 'win32') {
-      onegetPlatform = 'win'
-    } else if (this.platform === 'darwin') {
-      onegetPlatform = 'mac'
-    } else {
-      onegetPlatform = 'linux'
-    }
+    const onegetPlatform = this.getOnegetPlatform();
 
     try {
       await exec('oneget', [
@@ -121,6 +148,7 @@ class OnecPlatform extends OnecTool {
     } catch (error) {
       if (error instanceof Error) core.info(error.message)
     }
+
     core.info(`onec was downloaded`)
 
     const patterns = [`**/${installerPattern}*`]
@@ -129,26 +157,33 @@ class OnecPlatform extends OnecTool {
 
     core.info(`found ${files}`)
 
-    await exec('sudo', [
-      files[0],
+    const install_arg = [
       '--mode',
       'unattended',
       '--enable-components',
       'server,client_full',
       '--disable-components',
       'client_thin,client_thin_fib,ws'
-    ])
+    ]
+    
+    if(this.isLinux()) {
+      await exec('sudo', [files[0], ...install_arg])
+    } else if(this.isWindows()){
+      await exec(files[0], install_arg)
+    } else {
+      core.setFailed("Unrecognized os " + this.platform)
+    }
   }
 
   getCacheDirs(): string[] {
     switch (this.platform) {
-      case 'win32': {
+      case PLATFORM_WIN: {
         return ['C:/Program Files/1cv8']
       }
-      case 'darwin': {
+      case PLATFORM_MAC: {
         return ['/opt/1cv8'] // /Applications/1cv8.localized/8.3.21.1644/ but only .app
       }
-      case 'linux': {
+      case PLATFORM_LIN: {
         return ['/opt/1cv8']
       }
       default: {
@@ -175,13 +210,13 @@ class OneGet extends OnecTool {
   async install(): Promise<void> {
     let extension
     let platform
-    if (this.platform === 'win32') {
+    if (this.isWindows()) {
       platform = 'windows'
       extension = 'zip'
-    } else if (this.platform === 'linux') {
+    } else if (this.isLinux()) {
       platform = 'linux'
       extension = 'tar.gz'
-    } else if (this.platform === 'darwin') {
+    } else if (this.isMac()) {
       platform = 'darwin'
       extension = 'tar.gz'
     }
@@ -195,7 +230,7 @@ class OneGet extends OnecTool {
     core.info(`oneget was downloaded`)
 
     let oneGetFolder
-    if (this.platform === 'win32') {
+    if (this.isWindows()) {
       oneGetFolder = await tc.extractZip(onegetPath, this.cache_[0])
     } else {
       oneGetFolder = await tc.extractTar(onegetPath, this.cache_[0])
@@ -203,7 +238,7 @@ class OneGet extends OnecTool {
     core.info(`oneget was extracted ${oneGetFolder} -> ${this.cache_[0]}`)
 
     core.addPath(this.cache_[0])
-    if (this.platform !== 'win32') {
+    if (!this.isWindows()) {
       await exec('chmod', ['+x', `${this.cache_[0]}/oneget`])
     }
   }
@@ -229,20 +264,14 @@ class EDT extends OnecTool {
 
   async install(): Promise<void> {
     let installerPattern
-    if (this.platform === 'win32') {
+
+    if (this.isWindows()) {
       installerPattern = '1ce-installer-cli.exe'
     } else {
       installerPattern = '1ce-installer-cli'
     }
-    let onegetPlatform = ''
 
-    if (this.platform === 'win32') {
-      onegetPlatform = 'win'
-    } else if (this.platform === 'darwin') {
-      onegetPlatform = 'mac'
-    } else {
-      onegetPlatform = 'linux'
-    }
+    const onegetPlatform = this.getOnegetPlatform();
 
     try {
       await exec('oneget', [
@@ -254,7 +283,7 @@ class EDT extends OnecTool {
       if (error instanceof Error) core.info(error.message)
     }
     core.info(`edt was downloaded`)
-    if (this.platform === 'win32') {
+    if (this.isWindows()) {
       const pattern = `**/1c_edt_distr_offline*.zip`
       core.info(pattern)
       const globber = await glob.create(pattern)
@@ -267,30 +296,30 @@ class EDT extends OnecTool {
     const files = await globber.glob()
 
     core.info(`finded ${files}`)
-    if (this.platform === 'win32') {
-      await exec(files[0], [
-        'install',
-        '--ignore-hardware-checks',
-        '--ignore-signature-warnings'
-      ])
+
+    const install_arg = [
+      'install',
+      '--ignore-hardware-checks',
+      '--ignore-signature-warnings'
+    ]
+
+    if(this.isLinux()) {
+      await exec('sudo', [files[0], ...install_arg])
+    } else if(this.isWindows()){
+      await exec(files[0], install_arg)
     } else {
-      await exec('sudo', [
-        files[0],
-        'install',
-        '--ignore-hardware-checks',
-        '--ignore-signature-warnings'
-      ])
+      core.setFailed("Unrecognized os " + this.platform)
     }
   }
   getCacheDirs(): string[] {
     switch (this.platform) {
-      case 'win32': {
+      case PLATFORM_WIN: {
         return ['C:/Program Files/1C']
       }
-      case 'darwin': {
+      case PLATFORM_MAC: {
         return ['/Applications/1C']
       }
-      case 'linux': {
+      case PLATFORM_LIN: {
         return ['/opt/1C']
       }
       default: {
@@ -299,6 +328,7 @@ class EDT extends OnecTool {
     }
   }
 }
+
 export async function run(): Promise<void> {
   const type = core.getInput('type')
   const edt_version = core.getInput('edt_version')
