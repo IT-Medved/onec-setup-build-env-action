@@ -61034,7 +61034,7 @@ class EDT extends OnecTool {
             core.info(pattern);
             const globber = await glob.create(pattern);
             for await (const file of globber.globGenerator()) {
-                tc.extractZip(file);
+                await tc.extractZip(file);
             }
         }
         const patterns = [`**/${installerPattern}`];
