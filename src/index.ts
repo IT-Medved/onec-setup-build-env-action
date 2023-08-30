@@ -14,6 +14,8 @@ interface IOnecTools {
   version: string
   platform: string
   getCacheDirs(): string[]
+  installerPath: string
+  instalationPath: string
 }
 
 abstract class OnecTool implements IOnecTools {
@@ -23,7 +25,8 @@ abstract class OnecTool implements IOnecTools {
   abstract version: string
   abstract platform: string
   abstract runFileName: string[]
-
+  abstract installerPath: string
+  abstract instalationPath: string
   abstract getCacheDirs(): string[]
   abstract install(): Promise<void>
 
@@ -85,6 +88,9 @@ class OnecPlatform extends OnecTool {
   version: string
   cache_: string[]
   platform: string
+  installerPath = ''
+  instalationPath = ''
+
   constructor(version: string, platform: string) {
     super()
     this.version = version
@@ -159,6 +165,8 @@ class OneGet extends OnecTool {
   version: string
   cache_: string[]
   platform: string
+  installerPath = ''
+  instalationPath = ''
   constructor(version: string, platform: string) {
     super()
     this.version = version
@@ -167,18 +175,22 @@ class OneGet extends OnecTool {
   }
   async install(): Promise<void> {
     let extension
-
+    let platform
     if (this.platform === 'win32') {
+      platform = 'windows'
       extension = 'zip'
-    } else {
+    } else if (this.platform === 'linux') {
+      platform = 'linux'
+      extension = 'tar.gz'
+    } else if (this.platform === 'darwin') {
+      platform = 'darwin'
       extension = 'tar.gz'
     }
-
     const archivePath = `/tmp/oneget.${extension}`
     await io.rmRF(archivePath)
 
     const onegetPath = await tc.downloadTool(
-      `https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${this.platform}_x86_64.${extension}`,
+      `https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${platform}_x86_64.${extension}`,
       `${archivePath}`
     )
     core.info(`oneget was downloaded`)
@@ -205,6 +217,8 @@ class EDT extends OnecTool {
   version: string
   cache_: string[]
   platform: string
+  installerPath = ''
+  instalationPath = ''
   constructor(version: string, platform: string) {
     super()
     this.version = version
