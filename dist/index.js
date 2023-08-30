@@ -60870,6 +60870,8 @@ class OnecPlatform extends OnecTool {
     version;
     cache_;
     platform;
+    installerPath = '';
+    instalationPath = '';
     constructor(version, platform) {
         super();
         this.version = version;
@@ -60939,6 +60941,8 @@ class OneGet extends OnecTool {
     version;
     cache_;
     platform;
+    installerPath = '';
+    instalationPath = '';
     constructor(version, platform) {
         super();
         this.version = version;
@@ -60947,15 +60951,22 @@ class OneGet extends OnecTool {
     }
     async install() {
         let extension;
+        let platform;
         if (this.platform === 'win32') {
+            platform = 'windows';
             extension = 'zip';
         }
-        else {
+        else if (this.platform === 'linux') {
+            platform = 'linux';
+            extension = 'tar.gz';
+        }
+        else if (this.platform === 'darwin') {
+            platform = 'darwin';
             extension = 'tar.gz';
         }
         const archivePath = `/tmp/oneget.${extension}`;
         await io.rmRF(archivePath);
-        const onegetPath = await tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${this.platform}_x86_64.${extension}`, `${archivePath}`);
+        const onegetPath = await tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${platform}_x86_64.${extension}`, `${archivePath}`);
         core.info(`oneget was downloaded`);
         let oneGetFolder;
         if (this.platform === 'win32') {
@@ -60966,7 +60977,9 @@ class OneGet extends OnecTool {
         }
         core.info(`oneget was extracted ${oneGetFolder} -> ${this.cache_[0]}`);
         core.addPath(this.cache_[0]);
-        await (0, exec_1.exec)('chmod', ['+x', `${this.cache_[0]}/oneget`]);
+        if (this.platform !== 'win32') {
+            await (0, exec_1.exec)('chmod', ['+x', `${this.cache_[0]}/oneget`]);
+        }
     }
     getCacheDirs() {
         return ['/tmp/oneget'];
@@ -60978,6 +60991,8 @@ class EDT extends OnecTool {
     version;
     cache_;
     platform;
+    installerPath = '';
+    instalationPath = '';
     constructor(version, platform) {
         super();
         this.version = version;
