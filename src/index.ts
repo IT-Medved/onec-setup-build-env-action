@@ -228,7 +228,12 @@ class EDT extends OnecTool {
   }
 
   async install(): Promise<void> {
-    const installerPattern = '1ce-installer-cli'
+    let installerPattern
+    if (this.platform === 'win32') {
+      installerPattern = '1ce-installer-cli.exe'
+    } else {
+      installerPattern = '1ce-installer-cli'
+    }
     let onegetPlatform = ''
 
     if (this.platform === 'win32') {

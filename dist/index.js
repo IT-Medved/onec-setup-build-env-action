@@ -61000,7 +61000,13 @@ class EDT extends OnecTool {
         this.cache_ = this.getCacheDirs();
     }
     async install() {
-        const installerPattern = '1ce-installer-cli';
+        let installerPattern;
+        if (this.platform === 'win32') {
+            installerPattern = '1ce-installer-cli.exe';
+        }
+        else {
+            installerPattern = '1ce-installer-cli';
+        }
         let onegetPlatform = '';
         if (this.platform === 'win32') {
             onegetPlatform = 'win';
