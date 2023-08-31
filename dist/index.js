@@ -60818,6 +60818,9 @@ const glob = __importStar(__nccwpck_require__(8090));
 const io = __importStar(__nccwpck_require__(7436));
 const utils_1 = __nccwpck_require__(1314);
 const path_1 = __importDefault(__nccwpck_require__(1017));
+const PLATFORM_WIN = 'win32';
+const PLATFORM_LIN = 'linux';
+const PLATFORM_MAC = 'darwin';
 class OnecTool {
     CACHE_KEY_PREFIX = 'setup-onec';
     async updatePath() {
@@ -60863,6 +60866,32 @@ class OnecTool {
                 core.info(error.message);
         }
     }
+    isWindows() {
+        return PLATFORM_WIN === this.platform;
+    }
+    isMac() {
+        return PLATFORM_MAC === this.platform;
+    }
+    isLinux() {
+        return PLATFORM_LIN === this.platform;
+    }
+    getOnegetPlatform() {
+        switch (this.platform) {
+            case PLATFORM_WIN: {
+                return 'win';
+            }
+            case PLATFORM_MAC: {
+                return 'mac';
+            }
+            case PLATFORM_LIN: {
+                return 'linux';
+            }
+            default: {
+                core.setFailed('Unrecognized os ' + this.platform);
+                return '';
+            }
+        }
+    }
 }
 class OnecPlatform extends OnecTool {
     runFileName = ['ibcmd', 'ibcmd.exe'];
@@ -60880,22 +60909,23 @@ class OnecPlatform extends OnecTool {
     }
     async install() {
         const installerPattern = 'setup-full';
-        let onegetPlatform = '';
-        if (this.platform === 'win32') {
-            onegetPlatform = 'win';
+        const onegetPlatform = this.getOnegetPlatform();
+        let filter;
+        core.debug(`isWindows: ${this.isWindows()}`);
+        core.debug(`isLinux: ${this.isLinux()}`);
+        core.debug(`isMac: ${this.isMac()}`);
+        if (this.isWindows()) {
+            filter = 'windows64full';
         }
-        else if (this.platform === 'darwin') {
-            onegetPlatform = 'mac';
-        }
-        else {
-            onegetPlatform = 'linux';
+        else if (this.isLinux()) {
+            filter = 'server64_8';
         }
         try {
             await (0, exec_1.exec)('oneget', [
                 'get',
                 '--extract',
                 '--filter',
-                'platform=server64_8',
+                `platform=${filter}`,
                 `platform:${onegetPlatform}.full.x64@${this.version}`
             ]);
         }
@@ -60908,25 +60938,33 @@ class OnecPlatform extends OnecTool {
         const globber = await glob.create(patterns.join('\n'));
         const files = await globber.glob();
         core.info(`found ${files}`);
-        await (0, exec_1.exec)('sudo', [
-            files[0],
+        const install_arg = [
             '--mode',
             'unattended',
             '--enable-components',
             'server,client_full',
             '--disable-components',
             'client_thin,client_thin_fib,ws'
-        ]);
+        ];
+        if (this.isLinux()) {
+            await (0, exec_1.exec)('sudo', [files[0], ...install_arg]);
+        }
+        else if (this.isWindows()) {
+            await (0, exec_1.exec)(files[0], install_arg);
+        }
+        else {
+            core.setFailed('Unrecognized os ' + this.platform);
+        }
     }
     getCacheDirs() {
         switch (this.platform) {
-            case 'win32': {
+            case PLATFORM_WIN: {
                 return ['C:/Program Files/1cv8'];
             }
-            case 'darwin': {
+            case PLATFORM_MAC: {
                 return ['/opt/1cv8']; // /Applications/1cv8.localized/8.3.21.1644/ but only .app
             }
-            case 'linux': {
+            case PLATFORM_LIN: {
                 return ['/opt/1cv8'];
             }
             default: {
@@ -60952,15 +60990,15 @@ class OneGet extends OnecTool {
     async install() {
         let extension;
         let platform;
-        if (this.platform === 'win32') {
+        if (this.isWindows()) {
             platform = 'windows';
             extension = 'zip';
         }
-        else if (this.platform === 'linux') {
+        else if (this.isLinux()) {
             platform = 'linux';
             extension = 'tar.gz';
         }
-        else if (this.platform === 'darwin') {
+        else if (this.isMac()) {
             platform = 'darwin';
             extension = 'tar.gz';
         }
@@ -60969,7 +61007,7 @@ class OneGet extends OnecTool {
         const onegetPath = await tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${platform}_x86_64.${extension}`, `${archivePath}`);
         core.info(`oneget was downloaded`);
         let oneGetFolder;
-        if (this.platform === 'win32') {
+        if (this.isWindows()) {
             oneGetFolder = await tc.extractZip(onegetPath, this.cache_[0]);
         }
         else {
@@ -60977,7 +61015,7 @@ class OneGet extends OnecTool {
         }
         core.info(`oneget was extracted ${oneGetFolder} -> ${this.cache_[0]}`);
         core.addPath(this.cache_[0]);
-        if (this.platform !== 'win32') {
+        if (!this.isWindows()) {
             await (0, exec_1.exec)('chmod', ['+x', `${this.cache_[0]}/oneget`]);
         }
     }
@@ -61001,22 +61039,13 @@ class EDT extends OnecTool {
     }
     async install() {
         let installerPattern;
-        if (this.platform === 'win32') {
+        if (this.isWindows()) {
             installerPattern = '1ce-installer-cli.exe';
         }
         else {
             installerPattern = '1ce-installer-cli';
         }
-        let onegetPlatform = '';
-        if (this.platform === 'win32') {
-            onegetPlatform = 'win';
-        }
-        else if (this.platform === 'darwin') {
-            onegetPlatform = 'mac';
-        }
-        else {
-            onegetPlatform = 'linux';
-        }
+        const onegetPlatform = this.getOnegetPlatform();
         try {
             await (0, exec_1.exec)('oneget', [
                 'get',
@@ -61029,7 +61058,7 @@ class EDT extends OnecTool {
                 core.info(error.message);
         }
         core.info(`edt was downloaded`);
-        if (this.platform === 'win32') {
+        if (this.isWindows()) {
             const pattern = `**/1c_edt_distr_offline*.zip`;
             core.info(pattern);
             const globber = await glob.create(pattern);
@@ -61041,31 +61070,30 @@ class EDT extends OnecTool {
         const globber = await glob.create(patterns.join('\n'));
         const files = await globber.glob();
         core.info(`finded ${files}`);
-        if (this.platform === 'win32') {
-            await (0, exec_1.exec)(files[0], [
-                'install',
-                '--ignore-hardware-checks',
-                '--ignore-signature-warnings'
-            ]);
+        const install_arg = [
+            'install',
+            '--ignore-hardware-checks',
+            '--ignore-signature-warnings'
+        ];
+        if (this.isLinux()) {
+            await (0, exec_1.exec)('sudo', [files[0], ...install_arg]);
+        }
+        else if (this.isWindows()) {
+            await (0, exec_1.exec)(files[0], install_arg);
         }
         else {
-            await (0, exec_1.exec)('sudo', [
-                files[0],
-                'install',
-                '--ignore-hardware-checks',
-                '--ignore-signature-warnings'
-            ]);
+            core.setFailed('Unrecognized os ' + this.platform);
         }
     }
     getCacheDirs() {
         switch (this.platform) {
-            case 'win32': {
+            case PLATFORM_WIN: {
                 return ['C:/Program Files/1C'];
             }
-            case 'darwin': {
+            case PLATFORM_MAC: {
                 return ['/Applications/1C'];
             }
-            case 'linux': {
+            case PLATFORM_LIN: {
                 return ['/opt/1C'];
             }
             default: {
