@@ -136,13 +136,25 @@ class OnecPlatform extends OnecTool {
   async install(): Promise<void> {
     const installerPattern = 'setup-full'
     const onegetPlatform = this.getOnegetPlatform();
+    
+    let filter;
+    
+    core.debug(`isWindows: ${this.isWindows()}`);
+    core.debug(`isLinux: ${this.isLinux()}`);
+    core.debug(`isMac: ${this.isMac()}`);
+
+    if(this.isWindows()) {
+      filter = 'windows64full';
+    } else if(this.isLinux()) {
+      filter = 'server64_8';
+    }
 
     try {
       await exec('oneget', [
         'get',
         '--extract',
         '--filter',
-        'platform=server64_8',
+        'platform=${filter}',
         `platform:${onegetPlatform}.full.x64@${this.version}`
       ])
     } catch (error) {
