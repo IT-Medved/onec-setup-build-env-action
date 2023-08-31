@@ -60908,14 +60908,14 @@ class OnecPlatform extends OnecTool {
         this.cache_ = this.getCacheDirs();
     }
     async install() {
-        const installerPattern = 'setup-full';
+        const installerPattern = this.isWindows() ? 'setup.exe' : 'setup-full';
         const onegetPlatform = this.getOnegetPlatform();
         let filter;
         core.debug(`isWindows: ${this.isWindows()}`);
         core.debug(`isLinux: ${this.isLinux()}`);
         core.debug(`isMac: ${this.isMac()}`);
         if (this.isWindows()) {
-            filter = 'windows64full';
+            filter = 'windows64full_8';
         }
         else if (this.isLinux()) {
             filter = 'server64_8';
@@ -60947,10 +60947,28 @@ class OnecPlatform extends OnecTool {
             'client_thin,client_thin_fib,ws'
         ];
         if (this.isLinux()) {
-            await (0, exec_1.exec)('sudo', [files[0], ...install_arg]);
+            await (0, exec_1.exec)('sudo', [
+                files[0],
+                '--mode',
+                'unattended',
+                '--enable-components',
+                'server,client_full',
+                '--disable-components',
+                'client_thin,client_thin_fib,ws'
+            ]);
         }
         else if (this.isWindows()) {
-            await (0, exec_1.exec)(files[0], install_arg);
+            await (0, exec_1.exec)(files[0], [
+                '/l',
+                'ru',
+                '/S',
+                'server=1',
+                'thinclient=1',
+                '/quiet',
+                '/qn',
+                'INSTALLSRVRASSRVC=0',
+                '/norestart'
+            ]);
         }
         else {
             core.setFailed('Unrecognized os ' + this.platform);
