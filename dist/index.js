@@ -60867,7 +60867,16 @@ class OnecTool {
         }
         core.setOutput('cache-hit', matchedKey === primaryKey);
     }
-    async saveCache() {
+    async saveInstallerCache() {
+        try {
+            await cache.saveCache([`/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`], this.computeInstallerKey());
+        }
+        catch (error) {
+            if (error instanceof Error)
+                core.info(error.message);
+        }
+    }
+    async saveInstalledCache() {
         try {
             core.info(`Trying to save: ${this.cache_.slice().toString()}`);
             await cache.saveCache(this.cache_.slice(), this.computeInstalledKey());
@@ -61171,6 +61180,15 @@ async function run() {
     }
     let installerRestoredKey;
     let installerRestored = false;
+    let instalationRestoredKey;
+    let instalationRestored = false;
+    if (useCache) {
+        instalationRestoredKey = await installer.restoreInstalledTool();
+        instalationRestored = instalationRestoredKey !== undefined;
+    }
+    if (instalationRestored) {
+        return;
+    }
     if (useCacheDistr) {
         installerRestoredKey = await installer.restoreInstallationPackage();
         installerRestored = installerRestoredKey !== undefined;
@@ -61180,19 +61198,14 @@ async function run() {
         await oneget.download();
         await oneget.install();
         await installer.download();
-    }
-    let instalationRestoredKey;
-    let instalationRestored = false;
-    if (useCache) {
-        instalationRestoredKey = await installer.restoreInstalledTool();
-        instalationRestored = instalationRestoredKey !== undefined;
-    }
-    if (!instalationRestored) {
-        await installer.install();
-        await installer.updatePath();
-        if (useCache) {
-            await installer.saveCache();
+        if (useCacheDistr) {
+            await installer.saveInstallerCache();
         }
+    }
+    await installer.install();
+    await installer.updatePath();
+    if (useCache) {
+        await installer.saveInstalledCache();
     }
 }
 exports.run = run;
