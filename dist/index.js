@@ -60822,7 +60822,8 @@ const PLATFORM_WIN = 'win32';
 const PLATFORM_LIN = 'linux';
 const PLATFORM_MAC = 'darwin';
 class OnecTool {
-    CACHE_KEY_PREFIX = 'setup-onec';
+    CACHE_KEY_PREFIX = 'setup';
+    INSTALLER_CACHE_PRIMARY_KEY = 'installer';
     async updatePath() {
         for (const element of this.runFileName) {
             const pattern = `${this.cache_[0]}/**/${element}`;
@@ -60916,12 +60917,9 @@ class OnecTool {
 class OnecPlatform extends OnecTool {
     runFileName = ['ibcmd', 'ibcmd.exe'];
     INSTALLED_CACHE_PRIMARY_KEY = 'onec';
-    INSTALLER_CACHE_PRIMARY_KEY = 'onec-installer';
     version;
     cache_;
     platform;
-    installerPath = '';
-    instalationPath = '';
     constructor(version, platform) {
         super();
         this.version = version;
@@ -61013,12 +61011,9 @@ class OnecPlatform extends OnecTool {
 class OneGet extends OnecTool {
     runFileName = ['oneget'];
     INSTALLED_CACHE_PRIMARY_KEY = 'oneget';
-    INSTALLER_CACHE_PRIMARY_KEY = 'oneget-installer';
     version;
     cache_;
     platform;
-    installerPath = '';
-    instalationPath = '';
     constructor(version, platform) {
         super();
         this.version = version;
@@ -61078,12 +61073,9 @@ class OneGet extends OnecTool {
 class EDT extends OnecTool {
     runFileName = ['ring', 'ring.bat', '1cedtcli.bat', '1cedtcli.sh'];
     INSTALLED_CACHE_PRIMARY_KEY = 'edt';
-    INSTALLER_CACHE_PRIMARY_KEY = 'edt-installer';
     version;
     cache_;
     platform;
-    installerPath = '';
-    instalationPath = '';
     constructor(version, platform) {
         super();
         this.version = version;
