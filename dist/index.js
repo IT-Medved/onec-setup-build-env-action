@@ -60837,15 +60837,26 @@ class OnecTool {
     async handleLoadedCache() {
         await this.updatePath();
     }
-    async restoreCache() {
-        const primaryKey = this.computeKey();
+    async restoreInstallationPackage() {
+        const primaryKey = this.computeInstallerKey();
+        const restorePath = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`;
+        const matchedKey = await (0, utils_1.restoreCasheByPrimaryKey)([restorePath], primaryKey);
+        await this.handleLoadedCache();
+        await this.handleMatchResult(matchedKey, primaryKey);
+        return matchedKey;
+    }
+    async restoreInstalledTool() {
+        const primaryKey = this.computeInstalledKey();
         const matchedKey = await (0, utils_1.restoreCasheByPrimaryKey)(this.cache_, primaryKey);
         await this.handleLoadedCache();
         await this.handleMatchResult(matchedKey, primaryKey);
         return matchedKey;
     }
-    computeKey() {
-        return `${this.CACHE_KEY_PREFIX}--${this.CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`;
+    computeInstalledKey() {
+        return `${this.CACHE_KEY_PREFIX}--${this.INSTALLED_CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`;
+    }
+    computeInstallerKey() {
+        return `${this.CACHE_KEY_PREFIX}--${this.INSTALLER_CACHE_PRIMARY_KEY}--${this.INSTALLED_CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`;
     }
     async handleMatchResult(matchedKey, primaryKey) {
         if (matchedKey) {
@@ -60859,7 +60870,7 @@ class OnecTool {
     async saveCache() {
         try {
             core.info(`Trying to save: ${this.cache_.slice().toString()}`);
-            await cache.saveCache(this.cache_.slice(), this.computeKey());
+            await cache.saveCache(this.cache_.slice(), this.computeInstalledKey());
         }
         catch (error) {
             if (error instanceof Error)
@@ -60887,7 +60898,7 @@ class OnecTool {
                 return 'linux';
             }
             default: {
-                core.setFailed('Unrecognized os ' + this.platform);
+                core.setFailed(`Unrecognized os ${this.platform}`);
                 return '';
             }
         }
@@ -60895,7 +60906,8 @@ class OnecTool {
 }
 class OnecPlatform extends OnecTool {
     runFileName = ['ibcmd', 'ibcmd.exe'];
-    CACHE_PRIMARY_KEY = 'onec';
+    INSTALLED_CACHE_PRIMARY_KEY = 'onec';
+    INSTALLER_CACHE_PRIMARY_KEY = 'onec-installer';
     version;
     cache_;
     platform;
@@ -60907,8 +60919,7 @@ class OnecPlatform extends OnecTool {
         this.platform = platform;
         this.cache_ = this.getCacheDirs();
     }
-    async install() {
-        const installerPattern = this.isWindows() ? 'setup.exe' : 'setup-full';
+    async download() {
         const onegetPlatform = this.getOnegetPlatform();
         let filter;
         core.debug(`isWindows: ${this.isWindows()}`);
@@ -60923,6 +60934,8 @@ class OnecPlatform extends OnecTool {
         try {
             await (0, exec_1.exec)('oneget', [
                 'get',
+                '--path',
+                `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`,
                 '--extract',
                 '--filter',
                 `platform=${filter}`,
@@ -60934,18 +60947,15 @@ class OnecPlatform extends OnecTool {
                 core.info(error.message);
         }
         core.info(`onec was downloaded`);
-        const patterns = [`**/${installerPattern}*`];
+    }
+    async install() {
+        const installerPattern = this.isWindows() ? 'setup.exe' : 'setup-full';
+        const patterns = [
+            `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/**/${installerPattern}*`
+        ];
         const globber = await glob.create(patterns.join('\n'));
         const files = await globber.glob();
         core.info(`found ${files}`);
-        const install_arg = [
-            '--mode',
-            'unattended',
-            '--enable-components',
-            'server,client_full',
-            '--disable-components',
-            'client_thin,client_thin_fib,ws'
-        ];
         if (this.isLinux()) {
             await (0, exec_1.exec)('sudo', [
                 files[0],
@@ -60971,7 +60981,7 @@ class OnecPlatform extends OnecTool {
             ]);
         }
         else {
-            core.setFailed('Unrecognized os ' + this.platform);
+            core.setFailed(`Unrecognized os ${this.platform}`);
         }
     }
     getCacheDirs() {
@@ -60993,7 +61003,8 @@ class OnecPlatform extends OnecTool {
 }
 class OneGet extends OnecTool {
     runFileName = ['oneget'];
-    CACHE_PRIMARY_KEY = 'oneget';
+    INSTALLED_CACHE_PRIMARY_KEY = 'oneget';
+    INSTALLER_CACHE_PRIMARY_KEY = 'oneget-installer';
     version;
     cache_;
     platform;
@@ -61005,7 +61016,7 @@ class OneGet extends OnecTool {
         this.platform = platform;
         this.cache_ = this.getCacheDirs();
     }
-    async install() {
+    async download() {
         let extension;
         let platform;
         if (this.isWindows()) {
@@ -61020,10 +61031,24 @@ class OneGet extends OnecTool {
             platform = 'darwin';
             extension = 'tar.gz';
         }
-        const archivePath = `/tmp/oneget.${extension}`;
-        await io.rmRF(archivePath);
-        const onegetPath = await tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${platform}_x86_64.${extension}`, `${archivePath}`);
+        const installerPath = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`;
+        await io.rmRF(installerPath);
+        const archivePath = `${installerPath}$/oneget.${extension}`;
+        await tc.downloadTool(`https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${platform}_x86_64.${extension}`, `${archivePath}`);
         core.info(`oneget was downloaded`);
+    }
+    async install() {
+        let extension;
+        if (this.isWindows()) {
+            extension = 'zip';
+        }
+        else if (this.isLinux()) {
+            extension = 'tar.gz';
+        }
+        else if (this.isMac()) {
+            extension = 'tar.gz';
+        }
+        const onegetPath = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/oneget.${extension}`;
         let oneGetFolder;
         if (this.isWindows()) {
             oneGetFolder = await tc.extractZip(onegetPath, this.cache_[0]);
@@ -61043,7 +61068,8 @@ class OneGet extends OnecTool {
 }
 class EDT extends OnecTool {
     runFileName = ['ring', 'ring.bat', '1cedtcli.bat', '1cedtcli.sh'];
-    CACHE_PRIMARY_KEY = 'edt';
+    INSTALLED_CACHE_PRIMARY_KEY = 'edt';
+    INSTALLER_CACHE_PRIMARY_KEY = 'edt-installer';
     version;
     cache_;
     platform;
@@ -61055,18 +61081,13 @@ class EDT extends OnecTool {
         this.platform = platform;
         this.cache_ = this.getCacheDirs();
     }
-    async install() {
-        let installerPattern;
-        if (this.isWindows()) {
-            installerPattern = '1ce-installer-cli.exe';
-        }
-        else {
-            installerPattern = '1ce-installer-cli';
-        }
+    async download() {
         const onegetPlatform = this.getOnegetPlatform();
         try {
             await (0, exec_1.exec)('oneget', [
                 'get',
+                '--path',
+                `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`,
                 '--extract',
                 `edt:${onegetPlatform}@${this.version}`
             ]);
@@ -61076,15 +61097,26 @@ class EDT extends OnecTool {
                 core.info(error.message);
         }
         core.info(`edt was downloaded`);
+    }
+    async install() {
+        let installerPattern;
         if (this.isWindows()) {
-            const pattern = `**/1c_edt_distr_offline*.zip`;
+            installerPattern = '1ce-installer-cli.exe';
+        }
+        else {
+            installerPattern = '1ce-installer-cli';
+        }
+        if (this.isWindows()) {
+            const pattern = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/**/1c_edt_distr_offline*.zip`;
             core.info(pattern);
             const globber = await glob.create(pattern);
             for await (const file of globber.globGenerator()) {
                 await tc.extractZip(file);
             }
         }
-        const patterns = [`**/${installerPattern}`];
+        const patterns = [
+            `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/**/${installerPattern}`
+        ];
         const globber = await glob.create(patterns.join('\n'));
         const files = await globber.glob();
         core.info(`finded ${files}`);
@@ -61100,7 +61132,7 @@ class EDT extends OnecTool {
             await (0, exec_1.exec)(files[0], install_arg);
         }
         else {
-            core.setFailed('Unrecognized os ' + this.platform);
+            core.setFailed(`Unrecognized os${this.platform}`);
         }
     }
     getCacheDirs() {
@@ -61128,9 +61160,6 @@ async function run() {
     const useCache = core.getBooleanInput('cache') && (0, utils_1.isCacheFeatureAvailable)();
     const useCacheDistr = core.getBooleanInput('cache_distr') && (0, utils_1.isCacheFeatureAvailable)();
     let installer;
-    if (useCache && useCacheDistr) {
-        throw new Error('only one cache type allowed');
-    }
     if (type === 'edt') {
         installer = new EDT(edt_version, process.platform);
     }
@@ -61140,15 +61169,24 @@ async function run() {
     else {
         throw new Error('failed to recognize the installer type');
     }
-    let restoredKey;
-    let restored = false;
-    if (useCache) {
-        restoredKey = await installer.restoreCache();
-        restored = restoredKey !== undefined;
+    let installerRestoredKey;
+    let installerRestored = false;
+    if (useCacheDistr) {
+        installerRestoredKey = await installer.restoreInstallationPackage();
+        installerRestored = installerRestoredKey !== undefined;
     }
-    if (!restored) {
+    if (installerRestored) {
         const oneget = new OneGet(onegetVersion, process.platform);
         await oneget.install();
+        await installer.download();
+    }
+    let instalationRestoredKey;
+    let instalationRestored = false;
+    if (useCache) {
+        instalationRestoredKey = await installer.restoreInstalledTool();
+        instalationRestored = instalationRestoredKey !== undefined;
+    }
+    if (!instalationRestored) {
         await installer.install();
         await installer.updatePath();
         if (useCache) {
