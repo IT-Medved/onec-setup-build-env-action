@@ -61177,6 +61177,7 @@ async function run() {
     }
     if (installerRestored) {
         const oneget = new OneGet(onegetVersion, process.platform);
+        await oneget.download();
         await oneget.install();
         await installer.download();
     }
