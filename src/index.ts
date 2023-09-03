@@ -10,30 +10,27 @@ import path from 'path'
 const PLATFORM_WIN = 'win32'
 const PLATFORM_LIN = 'linux'
 const PLATFORM_MAC = 'darwin'
-
 interface IOnecTools {
   CACHE_KEY_PREFIX: string
-  CACHE_PRIMARY_KEY: string
+  INSTALLED_CACHE_PRIMARY_KEY: string
+  INSTALLER_CACHE_PRIMARY_KEY: string
   cache_: string[]
   version: string
   platform: string
   getCacheDirs(): string[]
-  installerPath: string
-  instalationPath: string
 }
 
 abstract class OnecTool implements IOnecTools {
-  CACHE_KEY_PREFIX = 'setup-onec'
-  abstract CACHE_PRIMARY_KEY: string
+  CACHE_KEY_PREFIX = 'setup'
+  INSTALLER_CACHE_PRIMARY_KEY = 'installer'
+  abstract INSTALLED_CACHE_PRIMARY_KEY: string
   abstract cache_: string[]
   abstract version: string
   abstract platform: string
   abstract runFileName: string[]
-  abstract installerPath: string
-  abstract instalationPath: string
   abstract getCacheDirs(): string[]
   abstract install(): Promise<void>
-
+  abstract download(): Promise<void>
   async updatePath(): Promise<void> {
     for (const element of this.runFileName) {
       const pattern = `${this.cache_[0]}/**/${element}`
@@ -50,8 +47,20 @@ abstract class OnecTool implements IOnecTools {
     await this.updatePath()
   }
 
-  async restoreCache(): Promise<string | undefined> {
-    const primaryKey = this.computeKey()
+  async restoreInstallationPackage(): Promise<string | undefined> {
+    const primaryKey = this.computeInstallerKey()
+
+    const restorePath = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`
+    const matchedKey = await restoreCasheByPrimaryKey([restorePath], primaryKey)
+
+    await this.handleLoadedCache()
+    await this.handleMatchResult(matchedKey, primaryKey)
+
+    return matchedKey
+  }
+
+  async restoreInstalledTool(): Promise<string | undefined> {
+    const primaryKey = this.computeInstalledKey()
 
     const matchedKey = await restoreCasheByPrimaryKey(this.cache_, primaryKey)
 
@@ -61,8 +70,12 @@ abstract class OnecTool implements IOnecTools {
     return matchedKey
   }
 
-  computeKey(): string {
-    return `${this.CACHE_KEY_PREFIX}--${this.CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`
+  computeInstalledKey(): string {
+    return `${this.CACHE_KEY_PREFIX}--${this.INSTALLED_CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`
+  }
+
+  computeInstallerKey(): string {
+    return `${this.CACHE_KEY_PREFIX}--${this.INSTALLER_CACHE_PRIMARY_KEY}--${this.INSTALLED_CACHE_PRIMARY_KEY}--${this.version}--${this.platform}`
   }
 
   async handleMatchResult(
@@ -76,10 +89,21 @@ abstract class OnecTool implements IOnecTools {
     }
     core.setOutput('cache-hit', matchedKey === primaryKey)
   }
-  async saveCache(): Promise<void> {
+  async saveInstallerCache(): Promise<void> {
+    try {
+      await cache.saveCache(
+        [`/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`],
+        this.computeInstallerKey()
+      )
+    } catch (error) {
+      if (error instanceof Error) core.info(error.message)
+    }
+  }
+
+  async saveInstalledCache(): Promise<void> {
     try {
       core.info(`Trying to save: ${this.cache_.slice().toString()}`)
-      await cache.saveCache(this.cache_.slice(), this.computeKey())
+      await cache.saveCache(this.cache_.slice(), this.computeInstalledKey())
     } catch (error) {
       if (error instanceof Error) core.info(error.message)
     }
@@ -97,7 +121,7 @@ abstract class OnecTool implements IOnecTools {
     return PLATFORM_LIN === this.platform
   }
 
-  protected getOnegetPlatform(): String {
+  protected getOnegetPlatform(): string {
     switch (this.platform) {
       case PLATFORM_WIN: {
         return 'win'
@@ -109,7 +133,7 @@ abstract class OnecTool implements IOnecTools {
         return 'linux'
       }
       default: {
-        core.setFailed('Unrecognized os ' + this.platform)
+        core.setFailed(`Unrecognized os ${this.platform}`)
         return ''
       }
     }
@@ -118,22 +142,17 @@ abstract class OnecTool implements IOnecTools {
 
 class OnecPlatform extends OnecTool {
   runFileName = ['ibcmd', 'ibcmd.exe']
-  CACHE_PRIMARY_KEY = 'onec'
+  INSTALLED_CACHE_PRIMARY_KEY = 'onec'
   version: string
   cache_: string[]
   platform: string
-  installerPath = ''
-  instalationPath = ''
-
   constructor(version: string, platform: string) {
     super()
     this.version = version
     this.platform = platform
     this.cache_ = this.getCacheDirs()
   }
-
-  async install(): Promise<void> {
-    const installerPattern = this.isWindows() ? 'setup.exe' : 'setup-full'
+  async download(): Promise<void> {
     const onegetPlatform = this.getOnegetPlatform()
 
     let filter
@@ -151,6 +170,8 @@ class OnecPlatform extends OnecTool {
     try {
       await exec('oneget', [
         'get',
+        '--path',
+        `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`,
         '--extract',
         '--filter',
         `platform=${filter}`,
@@ -161,21 +182,18 @@ class OnecPlatform extends OnecTool {
     }
 
     core.info(`onec was downloaded`)
+  }
 
-    const patterns = [`**/${installerPattern}*`]
+  async install(): Promise<void> {
+    const installerPattern = this.isWindows() ? 'setup.exe' : 'setup-full'
+
+    const patterns = [
+      `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/**/${installerPattern}*`
+    ]
     const globber = await glob.create(patterns.join('\n'))
     const files = await globber.glob()
 
     core.info(`found ${files}`)
-
-    const install_arg = [
-      '--mode',
-      'unattended',
-      '--enable-components',
-      'server,client_full',
-      '--disable-components',
-      'client_thin,client_thin_fib,ws'
-    ]
 
     if (this.isLinux()) {
       await exec('sudo', [
@@ -200,7 +218,7 @@ class OnecPlatform extends OnecTool {
         '/norestart'
       ])
     } else {
-      core.setFailed('Unrecognized os ' + this.platform)
+      core.setFailed(`Unrecognized os ${this.platform}`)
     }
   }
 
@@ -224,19 +242,17 @@ class OnecPlatform extends OnecTool {
 
 class OneGet extends OnecTool {
   runFileName = ['oneget']
-  CACHE_PRIMARY_KEY = 'oneget'
+  INSTALLED_CACHE_PRIMARY_KEY = 'oneget'
   version: string
   cache_: string[]
   platform: string
-  installerPath = ''
-  instalationPath = ''
   constructor(version: string, platform: string) {
     super()
     this.version = version
     this.platform = platform
     this.cache_ = this.getCacheDirs()
   }
-  async install(): Promise<void> {
+  async download(): Promise<void> {
     let extension
     let platform
     if (this.isWindows()) {
@@ -249,14 +265,28 @@ class OneGet extends OnecTool {
       platform = 'darwin'
       extension = 'tar.gz'
     }
-    const archivePath = `/tmp/oneget.${extension}`
-    await io.rmRF(archivePath)
+    const installerPath = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`
+    await io.rmRF(installerPath)
 
-    const onegetPath = await tc.downloadTool(
+    const archivePath = `${installerPath}/oneget.${extension}`
+
+    await tc.downloadTool(
       `https://github.com/v8platform/oneget/releases/download/v${this.version}/oneget_${platform}_x86_64.${extension}`,
       `${archivePath}`
     )
     core.info(`oneget was downloaded`)
+  }
+
+  async install(): Promise<void> {
+    let extension
+    if (this.isWindows()) {
+      extension = 'zip'
+    } else if (this.isLinux()) {
+      extension = 'tar.gz'
+    } else if (this.isMac()) {
+      extension = 'tar.gz'
+    }
+    const onegetPath = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/oneget.${extension}`
 
     let oneGetFolder
     if (this.isWindows()) {
@@ -278,17 +308,31 @@ class OneGet extends OnecTool {
 }
 class EDT extends OnecTool {
   runFileName = ['ring', 'ring.bat', '1cedtcli.bat', '1cedtcli.sh']
-  CACHE_PRIMARY_KEY = 'edt'
+  INSTALLED_CACHE_PRIMARY_KEY = 'edt'
   version: string
   cache_: string[]
   platform: string
-  installerPath = ''
-  instalationPath = ''
   constructor(version: string, platform: string) {
     super()
     this.version = version
     this.platform = platform
     this.cache_ = this.getCacheDirs()
+  }
+  async download(): Promise<void> {
+    const onegetPlatform = this.getOnegetPlatform()
+
+    try {
+      await exec('oneget', [
+        'get',
+        '--path',
+        `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}`,
+        '--extract',
+        `edt:${onegetPlatform}@${this.version}`
+      ])
+    } catch (error) {
+      if (error instanceof Error) core.info(error.message)
+    }
+    core.info(`edt was downloaded`)
   }
 
   async install(): Promise<void> {
@@ -300,27 +344,17 @@ class EDT extends OnecTool {
       installerPattern = '1ce-installer-cli'
     }
 
-    const onegetPlatform = this.getOnegetPlatform()
-
-    try {
-      await exec('oneget', [
-        'get',
-        '--extract',
-        `edt:${onegetPlatform}@${this.version}`
-      ])
-    } catch (error) {
-      if (error instanceof Error) core.info(error.message)
-    }
-    core.info(`edt was downloaded`)
     if (this.isWindows()) {
-      const pattern = `**/1c_edt_distr_offline*.zip`
+      const pattern = `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/**/1c_edt_distr_offline*.zip`
       core.info(pattern)
       const globber = await glob.create(pattern)
       for await (const file of globber.globGenerator()) {
         await tc.extractZip(file)
       }
     }
-    const patterns = [`**/${installerPattern}`]
+    const patterns = [
+      `/tmp/${this.INSTALLER_CACHE_PRIMARY_KEY}/**/${installerPattern}`
+    ]
     const globber = await glob.create(patterns.join('\n'))
     const files = await globber.glob()
 
@@ -337,7 +371,7 @@ class EDT extends OnecTool {
     } else if (this.isWindows()) {
       await exec(files[0], install_arg)
     } else {
-      core.setFailed('Unrecognized os ' + this.platform)
+      core.setFailed(`Unrecognized os${this.platform}`)
     }
   }
   getCacheDirs(): string[] {
@@ -369,10 +403,6 @@ export async function run(): Promise<void> {
     core.getBooleanInput('cache_distr') && isCacheFeatureAvailable()
   let installer: OnecTool
 
-  if (useCache && useCacheDistr) {
-    throw new Error('only one cache type allowed')
-  }
-
   if (type === 'edt') {
     installer = new EDT(edt_version, process.platform)
   } else if (type === 'onec') {
@@ -381,25 +411,40 @@ export async function run(): Promise<void> {
     throw new Error('failed to recognize the installer type')
   }
 
-  let restoredKey: string | undefined
-  let restored = false
+  let installerRestoredKey: string | undefined
+  let installerRestored = false
+  let instalationRestoredKey: string | undefined
+  let instalationRestored = false
 
   if (useCache) {
-    restoredKey = await installer.restoreCache()
-    restored = restoredKey !== undefined
+    instalationRestoredKey = await installer.restoreInstalledTool()
+    instalationRestored = instalationRestoredKey !== undefined
   }
 
-  if (!restored) {
+  if (instalationRestored) {
+    return
+  }
+
+  if (useCacheDistr) {
+    installerRestoredKey = await installer.restoreInstallationPackage()
+    installerRestored = installerRestoredKey !== undefined
+  }
+
+  if (!installerRestored) {
     const oneget = new OneGet(onegetVersion, process.platform)
-
+    await oneget.download()
     await oneget.install()
-
-    await installer.install()
-    await installer.updatePath()
-
-    if (useCache) {
-      await installer.saveCache()
+    await installer.download()
+    if (useCacheDistr) {
+      await installer.saveInstallerCache()
     }
+  }
+
+  await installer.install()
+  await installer.updatePath()
+
+  if (useCache) {
+    await installer.saveInstalledCache()
   }
 }
 
