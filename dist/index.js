@@ -60824,13 +60824,14 @@ const PLATFORM_MAC = 'darwin';
 class OnecTool {
     CACHE_KEY_PREFIX = 'setup-onec';
     async updatePath() {
-        for (const element of this.runFileName) {
+        for (const element of this.getRunFileNames()) {
             const pattern = `${this.cache_[0]}/**/${element}`;
             core.info(pattern);
             const globber = await glob.create(pattern);
             for await (const file of globber.globGenerator()) {
                 core.info(`add to PATH ${path_1.default.dirname(file)} (${file}) `);
                 core.addPath(path_1.default.dirname(file));
+                break;
             }
         }
     }
@@ -60894,7 +60895,6 @@ class OnecTool {
     }
 }
 class OnecPlatform extends OnecTool {
-    runFileName = ['ibcmd', 'ibcmd.exe'];
     CACHE_PRIMARY_KEY = 'onec';
     version;
     cache_;
@@ -60993,9 +60993,16 @@ class OnecPlatform extends OnecTool {
             }
         }
     }
+    getRunFileNames() {
+        if (this.isWindows()) {
+            return ['ibcmd.exe'];
+        }
+        else {
+            return ['ibcmd'];
+        }
+    }
 }
 class OneGet extends OnecTool {
-    runFileName = ['oneget'];
     CACHE_PRIMARY_KEY = 'oneget';
     version;
     cache_;
@@ -61043,9 +61050,11 @@ class OneGet extends OnecTool {
     getCacheDirs() {
         return ['/tmp/oneget'];
     }
+    getRunFileNames() {
+        return ['oneget'];
+    }
 }
 class EDT extends OnecTool {
-    runFileName = ['ring', 'ring.bat', '1cedtcli.bat', '1cedtcli.sh'];
     CACHE_PRIMARY_KEY = 'edt';
     version;
     cache_;
@@ -61120,6 +61129,14 @@ class EDT extends OnecTool {
             default: {
                 throw new Error('Not supported on this OS type');
             }
+        }
+    }
+    getRunFileNames() {
+        if (this.isWindows()) {
+            return ['ring.bat', '1cedtcli.bat'];
+        }
+        else {
+            return ['ring', '1cedtcli.sh'];
         }
     }
 }
